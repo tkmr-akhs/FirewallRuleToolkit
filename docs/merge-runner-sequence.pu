@@ -1,0 +1,186 @@
+﻿@startuml merge-runner-sequence
+title Merge Runner Sequence
+
+participant "MergeUseCase.Execute" as UseCase
+participant "SqliteAtomicPolicyRepository" as AtomicRepo
+participant "IWriteRepositorySession" as WriteSession
+participant "IWriteRepository<MergedSecurityPolicy>" as MergedRepo
+
+participant "SecurityPolicyMergeRunner.Run" as Runner
+participant "MergePartitionKey" as PartitionKey
+participant "AtomicMergeCandidateFactory" as AtomicFactory
+participant "SecurityPolicyShadowAnalyzer" as ShadowAnalyzer
+participant "SecurityPolicyContainment" as Containment
+
+participant "SecurityPolicyMerger" as Merger
+participant "AtomicMergeCandidateDeduplicator" as Deduplicator
+participant "MergedSecurityPolicyFactory" as PolicyFactory
+participant "MutableMergedSecurityPolicy" as MutablePolicy
+participant "ServiceMerger" as ServiceMerger
+participant "SourceAddressMerger" as SourceMerger
+participant "DestinationAddressMerger" as DestinationMerger
+participant "OriginalRuleMerger" as OriginalRuleMerger
+participant "HighSimilarityPolicyRecomposer" as Recomposer
+participant "SmallWellKnownDestinationPortMatcher" as WellKnownMatcher
+
+note over ServiceMerger, OriginalRuleMerger
+  MergeBySignature / MergeSignatureSet /
+  traceability absorption are provided by the SignatureBasedMergerBase base class
+end note
+
+UseCase -> AtomicRepo : EnsureAvailable()
+AtomicRepo --> UseCase : available
+UseCase -> MergedRepo : Initialize()
+MergedRepo --> UseCase : void
+UseCase -> AtomicRepo : GetAllOrderedForMerge()
+AtomicRepo --> UseCase : atomic policies in merge order
+
+UseCase -> Runner : Run(\natomicPoliciesOrderedForMerge,\nMergedRepo.AppendRange,\nreportProgress)
+activate Runner
+
+loop each atomic policy in merge order
+  Runner -> Runner : processedAtomicCount++
+
+  alt progress threshold reached
+    Runner --> UseCase : reportProgress(processedAtomicCount)
+    UseCase --> Runner : void
+  end
+
+  Runner -> PartitionKey : FromAtomic(atomicPolicy)
+  PartitionKey --> Runner : nextPartition
+
+  alt current merge partition is null
+    Runner -> Runner : currentPartition = nextPartition
+  else merge partition changed
+    Runner -> ShadowAnalyzer : Analyze(partitionCandidates)
+    activate ShadowAnalyzer
+    loop each candidate in partitionCandidates
+      ShadowAnalyzer -> ShadowAnalyzer : FindShadowingIndex(nonShadowedIndices, candidateIndex)
+      ShadowAnalyzer -> ShadowAnalyzer : IsShadowedBy(frontCandidate, candidate)
+      ShadowAnalyzer -> Containment : IsApplicationContaining(...)
+      Containment --> ShadowAnalyzer : application contained?
+      ShadowAnalyzer -> Containment : IsAddressContaining(source / destination)
+      Containment --> ShadowAnalyzer : address contained?
+      ShadowAnalyzer -> Containment : IsServiceContaining(...)
+      Containment --> ShadowAnalyzer : service contained?
+    end
+    ShadowAnalyzer --> Runner : NonShadowedIndices + ShadowingRelations
+    deactivate ShadowAnalyzer
+
+    alt shadowed policies exist
+      Runner -> Runner : materialize nonShadowedCandidates from NonShadowedIndices
+      loop each shadowing relation
+        Runner -> Runner : AbsorbShadowedAtomicPolicy(frontCandidate, shadowedCandidate)\nunion OriginalPolicyNames and update MinimumIndex / MaximumIndex
+      end
+      Runner -> Runner : partitionCandidates.Clear()\npartitionCandidates.AddRange(nonShadowedCandidates)
+    else no shadowed policies
+      Runner -> Runner : keep partitionCandidates as-is
+    end
+
+    Runner -> Merger : MergePartition(partitionCandidates)
+    activate Merger
+    alt allow policies exist
+      Merger -> Deduplicator : RemoveContainedPolicies(allowPolicies)
+      activate Deduplicator
+      Deduplicator -> Containment : IsAddressContaining(source / destination)
+      Containment --> Deduplicator : address containment
+      Deduplicator -> Containment : IsApplicationContaining(...)
+      Containment --> Deduplicator : application containment
+      Deduplicator -> Containment : IsServiceContaining(...)
+      Containment --> Deduplicator : service containment
+      Deduplicator --> Merger : deduplicated allow policies
+      deactivate Deduplicator
+
+      loop create seed merged policies
+        Merger -> PolicyFactory : CreateFromAtomic(policy)
+        PolicyFactory --> Merger : single mutable merged policy
+      end
+
+      Merger -> ServiceMerger : Merge(allowPoliciesAfterDeduplication)
+      activate ServiceMerger
+      ServiceMerger -> PolicyFactory : ClonePolicy(basePolicy)
+      PolicyFactory --> ServiceMerger : cloned mutable policy
+      ServiceMerger --> Merger : service-merged mutable policies
+      deactivate ServiceMerger
+
+      Merger -> SourceMerger : Merge(allowPoliciesAfterServiceMerge)
+      activate SourceMerger
+      SourceMerger -> PolicyFactory : ClonePolicy(basePolicy)
+      PolicyFactory --> SourceMerger : cloned mutable policy
+      SourceMerger --> Merger : source-merged mutable policies
+      deactivate SourceMerger
+
+      Merger -> DestinationMerger : Merge(allowPoliciesAfterSourceMerge)
+      activate DestinationMerger
+      DestinationMerger -> WellKnownMatcher : TryGetSmallWellKnownDestinationPorts(signature services)
+      WellKnownMatcher --> DestinationMerger : matching ports / no match
+      DestinationMerger -> PolicyFactory : ClonePolicy(basePolicy)
+      PolicyFactory --> DestinationMerger : cloned mutable policy
+      DestinationMerger --> Merger : destination-merged mutable policies
+      deactivate DestinationMerger
+
+      Merger -> Recomposer : RecomposeMutable(allowPoliciesAfterThreePasses)
+      activate Recomposer
+      Recomposer -> WellKnownMatcher : TryGetSmallWellKnownDestinationPorts(commonServices)
+      WellKnownMatcher --> Recomposer : matching ports / no match
+      Recomposer -> PolicyFactory : CreateFromTemplate(...)
+      PolicyFactory --> Recomposer : recomposed mutable policies
+      Recomposer --> Merger : recomposed mutable allow policies
+      deactivate Recomposer
+    else no allow policies
+      Merger -> Merger : skip allow merge path
+    end
+
+    alt non-Allow policies exist
+      loop create non-Allow merged policies
+        Merger -> PolicyFactory : CreateFromAtomic(policy)
+        PolicyFactory --> Merger : single mutable merged policy
+      end
+      Merger -> OriginalRuleMerger : Merge(nonAllowMergedPolicies)
+      activate OriginalRuleMerger
+      OriginalRuleMerger -> PolicyFactory : ClonePolicy(basePolicy)
+      PolicyFactory --> OriginalRuleMerger : cloned mutable policy
+      OriginalRuleMerger --> Merger : non-Allow mutable merged policy
+      deactivate OriginalRuleMerger
+    else no non-Allow policies
+      Merger -> Merger : skip non-Allow merge path
+    end
+
+    Merger -> Merger : sort mutable policies by MinimumIndex / MaximumIndex
+    loop each sorted mutable policy
+      Merger -> MutablePolicy : ToMergedSecurityPolicy()
+      MutablePolicy --> Merger : read-only merged policy
+    end
+    Merger --> Runner : merged policies
+    deactivate Merger
+
+    Runner -> MergedRepo : AppendRange(mergedPolicies)
+    MergedRepo --> Runner : void
+    Runner -> Runner : partitionCandidates.Clear()
+    Runner -> Runner : AppendMergeRanges(mergedRanges, mergedPolicies)
+    Runner -> Runner : writtenMergedCount += mergedPolicies.Length
+    Runner -> Runner : processedPartitionCount++
+    Runner -> Runner : currentPartition = nextPartition
+  else same merge partition
+    Runner -> Runner : keep buffering
+  end
+
+  Runner -> AtomicFactory : CreateFromAtomic(atomicPolicy)
+  AtomicFactory --> Runner : partitionCandidate
+  Runner -> Runner : partitionCandidates.Add(partitionCandidate)
+end
+
+alt last merge partition exists
+  Runner -> Runner : FlushPartitionAfterShadowing(partitionCandidates, appendMergedPolicies)
+end
+
+Runner -> Runner : FindActionRangeOverlaps(mergedRanges)
+Runner -> Runner : build SecurityPolicyMergeRunResult
+Runner --> UseCase : SecurityPolicyMergeRunResult
+deactivate Runner
+
+UseCase -> UseCase : LogActionRangeOverlaps(result.ActionRangeOverlaps)
+UseCase -> WriteSession : Commit()
+WriteSession --> UseCase : void
+
+@enduml

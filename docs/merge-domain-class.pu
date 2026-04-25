@@ -1,0 +1,296 @@
+﻿@startuml merge-domain-class
+title Merge Domain Class Diagram
+
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+
+package "Domain.Services" {
+  class SecurityPolicyMergeRunner <<runner>> {
+    +Run(...) : SecurityPolicyMergeRunResult
+    -FlushPartitionAfterShadowing(...)
+    -RemoveShadowedAtomicPolicies(...)
+    -AppendMergeRanges(...)
+    -FindActionRangeOverlaps(...)
+    -AbsorbShadowedAtomicPolicy(...)
+  }
+
+  class SecurityPolicyMerger <<service>> {
+    +MergePartition(...) : IReadOnlyList<MergedSecurityPolicy>
+    -MergeAllowPolicies(...)
+    -MergeNonAllowPolicies(...)
+  }
+}
+
+package "Domain.Services.Merging" {
+  abstract class SignatureBasedMergerBase <<base>> {
+    #MergeBySignature(...) : List<MutableMergedSecurityPolicy>
+    #MergeSignatureSet(...) : MutableMergedSecurityPolicy
+    #MergeCollections(...)
+  }
+
+  class ServiceMerger <<service>> {
+    +Merge(...) : List<MutableMergedSecurityPolicy>
+    -CreateMergeSignature(...) : string
+  }
+
+  class SourceAddressMerger <<service>> {
+    +Merge(...) : List<MutableMergedSecurityPolicy>
+    -CreateMergeSignature(...) : string
+  }
+
+  class DestinationAddressMerger <<service>> {
+    -smallWellKnownDestinationPortMatcher : SmallWellKnownDestinationPortMatcher
+    +Merge(...) : List<MutableMergedSecurityPolicy>
+    -CreateMergeSignature(...) : string
+    -BuildDestinationAddressSetSignature(...) : string
+    -SplitDestinationAddressSignatureSetIfNeeded(...)
+    -ShouldKeepDestinationAddressesSeparated(...)
+  }
+
+  class OriginalRuleMerger <<service>> {
+    +Merge(...) : List<MutableMergedSecurityPolicy>
+    -CreateMergeSignature(...) : string
+  }
+
+  class HighSimilarityPolicyRecomposer <<service>> {
+    -smallWellKnownDestinationPortMatcher : SmallWellKnownDestinationPortMatcher
+    -highSimilarityThresholdPercentage : uint
+    +Recompose(...) : IReadOnlyList<MergedSecurityPolicy>
+    ~RecomposeMutable(...) : IReadOnlyList<MutableMergedSecurityPolicy>
+    -CreateRecompositionSignature(...) : string
+    -RecomposeGroup(...)
+    -FindBestHighSimilarityPair(...)
+  }
+
+  class SmallWellKnownDestinationPortMatcher <<service>> {
+    +TryGetSmallWellKnownDestinationPorts(...)
+  }
+
+  class AtomicMergeCandidateDeduplicator <<static>> {
+    +RemoveContainedPolicies(...) : List<AtomicMergeCandidate>
+  }
+
+  class AtomicMergeCandidateFactory <<factory>> {
+    +CreateFromAtomic(...) : AtomicMergeCandidate
+  }
+
+  class MergedSecurityPolicyFactory <<factory>> {
+    +CreateFromAtomic(...) : MutableMergedSecurityPolicy
+    +ClonePolicy(...) : MutableMergedSecurityPolicy
+    +CreateFromTemplate(...) : MutableMergedSecurityPolicy
+  }
+
+  class MutableMergedSecurityPolicy <<mutable>> {
+    +FromZones : HashSet<string>
+    +SourceAddresses : HashSet<AddressValue>
+    +ToZones : HashSet<string>
+    +DestinationAddresses : HashSet<AddressValue>
+    +Applications : HashSet<string>
+    +Services : HashSet<ServiceValue>
+    +Action : SecurityPolicyAction
+    +GroupId : string
+    +MinimumIndex : ulong
+    +MaximumIndex : ulong
+    +OriginalPolicyNames : HashSet<string>
+    +FromMergedSecurityPolicy(...) : MutableMergedSecurityPolicy
+    +ToMergedSecurityPolicy() : MergedSecurityPolicy
+  }
+
+  class SecurityPolicyShadowAnalyzer <<static>> {
+    +Analyze(...) : ShadowPartitionAnalysis
+    +IsShadowedBy(...) : bool
+  }
+
+  class "SecurityPolicyShadowAnalyzer.ShadowPartitionAnalysis" as ShadowPartitionAnalysis <<result>> {
+    +NonShadowedIndices : IReadOnlyList<int>
+    +ShadowingRelations : IReadOnlyList<ShadowingRelation>
+  }
+
+  class "SecurityPolicyShadowAnalyzer.ShadowingRelation" as ShadowingRelation <<value>>
+
+  class SecurityPolicyContainment <<static>> {
+    +IsAddressContaining(...) : bool
+    +IsServiceContaining(...) : bool
+    +IsApplicationContaining(...) : bool
+  }
+
+  class MergeSignatureFormatter <<static>> {
+    +BuildAddressSetSignature(...) : string
+    +BuildStringSetSignature(...) : string
+    +BuildServiceSetSignature(...) : string
+    +BuildStringSignature(...) : string
+  }
+
+  class MergePartitionKey <<value>> {
+    +FromAtomic(...) : MergePartitionKey
+  }
+
+  class AtomicMergeCandidate <<candidate>> {
+    +FromZone : string
+    +SourceAddress : AddressValue
+    +ToZone : string
+    +DestinationAddress : AddressValue
+    +Application : string
+    +Service : ServiceValue
+    +Action : SecurityPolicyAction
+    +GroupId : string
+    +MinimumIndex : ulong
+    +MaximumIndex : ulong
+    +OriginalPolicyNames : HashSet<string>
+  }
+}
+
+package "Domain.Services.Results" {
+  class SecurityPolicyMergeRunResult <<result>> {
+    +ProcessedAtomicCount : long
+    +ProcessedPartitionCount : long
+    +WrittenMergedCount : long
+    +ActionRangeOverlaps : IReadOnlyList<ActionRangeOverlap>
+  }
+
+  class "SecurityPolicyMergeRunResult.MergeIndexRange" as MergeIndexRange <<value>>
+  class "SecurityPolicyMergeRunResult.ActionRangeOverlap" as ActionRangeOverlap <<value>>
+}
+
+package "Domain.Entities" {
+  class AtomicSecurityPolicy <<entity>> {
+    +FromZone : string
+    +SourceAddress : AddressValue
+    +ToZone : string
+    +DestinationAddress : AddressValue
+    +Application : string
+    +Service : ServiceValue
+    +Action : SecurityPolicyAction
+    +GroupId : string
+    +OriginalIndex : ulong
+    +OriginalPolicyName : string
+  }
+
+  class MergedSecurityPolicy <<entity>> {
+    +FromZones : IReadOnlyCollection<string>
+    +SourceAddresses : IReadOnlyCollection<AddressValue>
+    +ToZones : IReadOnlyCollection<string>
+    +DestinationAddresses : IReadOnlyCollection<AddressValue>
+    +Applications : IReadOnlyCollection<string>
+    +Services : IReadOnlyCollection<ServiceValue>
+    +Action : SecurityPolicyAction
+    +GroupId : string
+    +MinimumIndex : ulong
+    +MaximumIndex : ulong
+    +OriginalPolicyNames : IReadOnlyCollection<string>
+  }
+}
+
+package "Domain.ValueObjects" {
+  class AddressValue <<struct>> {
+    +Start : uint
+    +Finish : uint
+  }
+
+  class ServiceValue <<struct>> {
+    +ProtocolStart : uint
+    +ProtocolFinish : uint
+    +SourcePortStart : uint
+    +SourcePortFinish : uint
+    +DestinationPortStart : uint
+    +DestinationPortFinish : uint
+    +Kind : string?
+  }
+}
+
+package "Domain.Enums" {
+  enum SecurityPolicyAction {
+    Allow
+    Deny
+    Drop
+    ResetBoth
+  }
+}
+
+SecurityPolicyMergeRunner *-- SecurityPolicyMerger
+SecurityPolicyMergeRunner ..> MergePartitionKey : partition
+SecurityPolicyMergeRunner ..> AtomicMergeCandidateFactory : create
+SecurityPolicyMergeRunner ..> SecurityPolicyShadowAnalyzer : analyze
+SecurityPolicyMergeRunner ..> SecurityPolicyMergeRunResult : returns
+SecurityPolicyMergeRunner ..> AtomicMergeCandidate
+SecurityPolicyMergeRunner ..> MergedSecurityPolicy
+
+SecurityPolicyMerger *-- ServiceMerger
+SecurityPolicyMerger *-- SourceAddressMerger
+SecurityPolicyMerger *-- DestinationAddressMerger
+SecurityPolicyMerger *-- OriginalRuleMerger
+SecurityPolicyMerger *-- HighSimilarityPolicyRecomposer
+SecurityPolicyMerger ..> AtomicMergeCandidateDeduplicator
+SecurityPolicyMerger ..> MergedSecurityPolicyFactory
+SecurityPolicyMerger ..> AtomicMergeCandidate
+SecurityPolicyMerger ..> MutableMergedSecurityPolicy
+SecurityPolicyMerger ..> MergedSecurityPolicy
+
+ServiceMerger --|> SignatureBasedMergerBase
+SourceAddressMerger --|> SignatureBasedMergerBase
+DestinationAddressMerger --|> SignatureBasedMergerBase
+OriginalRuleMerger --|> SignatureBasedMergerBase
+
+SignatureBasedMergerBase ..> MergedSecurityPolicyFactory
+SignatureBasedMergerBase ..> MutableMergedSecurityPolicy
+
+ServiceMerger ..> MergeSignatureFormatter
+SourceAddressMerger ..> MergeSignatureFormatter
+DestinationAddressMerger ..> MergeSignatureFormatter
+OriginalRuleMerger ..> MergeSignatureFormatter
+ServiceMerger ..> MutableMergedSecurityPolicy
+SourceAddressMerger ..> MutableMergedSecurityPolicy
+DestinationAddressMerger ..> MutableMergedSecurityPolicy
+OriginalRuleMerger ..> MutableMergedSecurityPolicy
+
+DestinationAddressMerger *-- SmallWellKnownDestinationPortMatcher
+HighSimilarityPolicyRecomposer *-- SmallWellKnownDestinationPortMatcher
+HighSimilarityPolicyRecomposer ..> MergeSignatureFormatter
+HighSimilarityPolicyRecomposer ..> MergedSecurityPolicyFactory
+HighSimilarityPolicyRecomposer ..> MutableMergedSecurityPolicy
+HighSimilarityPolicyRecomposer ..> MergedSecurityPolicy
+
+AtomicMergeCandidateDeduplicator ..> SecurityPolicyContainment
+AtomicMergeCandidateDeduplicator ..> AtomicMergeCandidate
+SecurityPolicyShadowAnalyzer ..> SecurityPolicyContainment
+SecurityPolicyShadowAnalyzer ..> ShadowPartitionAnalysis
+SecurityPolicyShadowAnalyzer ..> AtomicMergeCandidate
+ShadowPartitionAnalysis o-- ShadowingRelation
+
+MergePartitionKey ..> AtomicSecurityPolicy
+AtomicMergeCandidateFactory ..> AtomicSecurityPolicy
+AtomicMergeCandidateFactory ..> AtomicMergeCandidate
+MergedSecurityPolicyFactory ..> AtomicMergeCandidate
+MergedSecurityPolicyFactory ..> MutableMergedSecurityPolicy
+MergeSignatureFormatter ..> AddressValue
+MergeSignatureFormatter ..> ServiceValue
+SecurityPolicyContainment ..> AddressValue
+SecurityPolicyContainment ..> ServiceValue
+
+AtomicSecurityPolicy ..> AddressValue
+AtomicSecurityPolicy ..> ServiceValue
+AtomicSecurityPolicy ..> SecurityPolicyAction
+AtomicMergeCandidate ..> AddressValue
+AtomicMergeCandidate ..> ServiceValue
+AtomicMergeCandidate ..> SecurityPolicyAction
+MutableMergedSecurityPolicy ..> AddressValue
+MutableMergedSecurityPolicy ..> ServiceValue
+MutableMergedSecurityPolicy ..> SecurityPolicyAction
+MutableMergedSecurityPolicy ..> MergedSecurityPolicy
+MergedSecurityPolicy ..> AddressValue
+MergedSecurityPolicy ..> ServiceValue
+MergedSecurityPolicy ..> SecurityPolicyAction
+
+SecurityPolicyMergeRunResult o-- ActionRangeOverlap
+ActionRangeOverlap *-- MergeIndexRange
+MergeIndexRange ..> SecurityPolicyAction
+
+note bottom of SecurityPolicyMergeRunner
+  Private helper details and logging-only methods
+  are omitted to keep the diagram readable.
+end note
+
+@enduml

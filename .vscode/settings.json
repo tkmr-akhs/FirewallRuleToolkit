@@ -1,0 +1,13 @@
+{
+  "dotnet.defaultSolution": "AclTool.sln",
+  "files.exclude": {
+    "**/bin": true,
+    "**/obj": true
+  },
+  "search.exclude": {
+    "**/bin": true,
+    "**/obj": true
+  },
+  "editor.formatOnSave": true,
+  "files.encoding": "utf8bom"
+}

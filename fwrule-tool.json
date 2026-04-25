@@ -1,0 +1,31 @@
+{
+    "database": "fwrule-tool-db",
+    "logtype": "ConsoleOnly",
+    "logfile": "fwrule-tool.log",
+    "loglevel": "Information",
+    "import": {
+        "encoding": "utf-8",
+        "withbom": true,
+        "securitypolicies": "input_securitypolicies.csv",
+        "addresses": "input_addresses.csv",
+        "addressgroups": "input_addressgroups.csv",
+        "services": "input_services.csv",
+        "servicegroups": "input_servicegroups.csv"
+    },
+    "atomize": {
+        "threshold": 25
+    },
+    "merge": {
+        "wkport": "20,21,22,23,80,443,3389",
+        "wkpthreshold": 3,
+        "hspercent": 80
+    },
+    "export": {
+        "encoding": "utf-8",
+        "withbom": true,
+        "target": "Merged",
+        "atomic": "output_atomic.csv",
+        "merged": "output_merged.csv"
+    },
+    "stat": {}
+}

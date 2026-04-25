@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run FirewallRuleToolkit",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/FirewallRuleToolkit/bin/Debug/net8.0/FirewallRuleToolkit.dll",
+      "args": [
+        "${workspaceFolder}/samples/input.csv",
+        "${workspaceFolder}/samples/output.csv",
+        "${workspaceFolder}/work.db"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    }
+  ]
+}

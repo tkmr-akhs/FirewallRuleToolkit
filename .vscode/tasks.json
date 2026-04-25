@@ -1,0 +1,76 @@
+﻿{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "${workspaceFolder}/FirewallRuleToolkit.slnx"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "clean",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "clean",
+        "${workspaceFolder}/FirewallRuleToolkit.slnx"
+      ]
+    },
+    {
+      "label": "run",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/src/FirewallRuleToolkit",
+        "--",
+        "${workspaceFolder}/samples/input.csv",
+        "${workspaceFolder}/samples/output.csv",
+        "${workspaceFolder}/work.db"
+      ],
+      "dependsOn": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "test",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/FirewallRuleToolkit.slnx"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "publish-win-x64",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "publish",
+        "${workspaceFolder}/src/FirewallRuleToolkit/FirewallRuleToolkit.csproj",
+        "-c",
+        "Release",
+        "-r",
+        "win-x64",
+        "--self-contained",
+        "true",
+        "/p:PublishSingleFile=true"
+      ],
+      "dependsOn": "build",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+﻿<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FirewallRuleToolkit/FirewallRuleToolkit.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FirewallRuleToolkit.Tests/FirewallRuleToolkit.Tests.csproj" />
+  </Folder>
+</Solution>
