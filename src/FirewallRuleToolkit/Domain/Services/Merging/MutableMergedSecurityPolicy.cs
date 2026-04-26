@@ -28,8 +28,8 @@ internal sealed class MutableMergedSecurityPolicy
         IEnumerable<ServiceValue> services,
         SecurityPolicyAction action,
         string groupId,
-        ulong minimumIndex,
-        ulong maximumIndex,
+        uint minimumIndex,
+        uint maximumIndex,
         IEnumerable<string> originalPolicyNames)
     {
         ArgumentNullException.ThrowIfNull(fromZones);
@@ -97,12 +97,12 @@ internal sealed class MutableMergedSecurityPolicy
     /// <summary>
     /// 最小インデックスを取得または設定します。
     /// </summary>
-    public ulong MinimumIndex { get; set; }
+    public uint MinimumIndex { get; set; }
 
     /// <summary>
     /// 最大インデックスを取得または設定します。
     /// </summary>
-    public ulong MaximumIndex { get; set; }
+    public uint MaximumIndex { get; set; }
 
     /// <summary>
     /// 元ポリシー名集合を取得します。

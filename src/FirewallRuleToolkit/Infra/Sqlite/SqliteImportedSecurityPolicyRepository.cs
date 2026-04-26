@@ -18,8 +18,9 @@ public sealed class SqliteImportedSecurityPolicyRepository : SqliteReadWriteRepo
     private const string GroupIdColumn = SqliteDatabaseLayout.SecurityPolicies.GroupIdColumn;
 
     private const string InitializeCommandText =
-        "CREATE TABLE IF NOT EXISTS " + TableName + " (" +
-        PolicyIndexColumn + " INTEGER NOT NULL PRIMARY KEY, " +
+        "DROP TABLE IF EXISTS " + TableName + ";" +
+        "CREATE TABLE " + TableName + " (" +
+        PolicyIndexColumn + " INTEGER NOT NULL PRIMARY KEY CHECK (" + PolicyIndexColumn + " >= 0 AND " + PolicyIndexColumn + " <= 4294967295), " +
         NameColumn + " TEXT NOT NULL, " +
         FromZoneJsonColumn + " TEXT NOT NULL, " +
         SourceAddressesJsonColumn + " TEXT NOT NULL, " +
@@ -29,8 +30,7 @@ public sealed class SqliteImportedSecurityPolicyRepository : SqliteReadWriteRepo
         ServicesJsonColumn + " TEXT NOT NULL, " +
         ActionColumn + " TEXT NOT NULL, " +
         GroupIdColumn + " TEXT NOT NULL" +
-        ");" +
-        "DELETE FROM " + TableName + ";";
+        ");";
 
     private const string SelectAllCommandText =
         "SELECT " +
@@ -74,7 +74,7 @@ public sealed class SqliteImportedSecurityPolicyRepository : SqliteReadWriteRepo
             InsertCommandText,
             static reader => new ImportedSecurityPolicy
             {
-                Index = Convert.ToUInt64(reader.GetInt64(0)),
+                Index = EntityValueCodec.ReadPolicyIndex(reader.GetInt64(0)),
                 Name = reader.GetString(1),
                 FromZones = EntityValueCodec.DeserializeStringList(reader.GetString(2)),
                 SourceAddressReferences = EntityValueCodec.DeserializeStringList(reader.GetString(3)),
@@ -87,7 +87,7 @@ public sealed class SqliteImportedSecurityPolicyRepository : SqliteReadWriteRepo
             },
             static (command, securityPolicy) =>
             {
-                command.Parameters.AddWithValue("$index", checked((long)securityPolicy.Index));
+                command.Parameters.AddWithValue("$index", EntityValueCodec.FormatPolicyIndex(securityPolicy.Index));
                 command.Parameters.AddWithValue("$name", securityPolicy.Name);
                 command.Parameters.AddWithValue("$fromZoneJson", EntityValueCodec.SerializeStringList(securityPolicy.FromZones));
                 command.Parameters.AddWithValue("$sourceAddressesJson", EntityValueCodec.SerializeStringList(securityPolicy.SourceAddressReferences));
@@ -110,7 +110,7 @@ public sealed class SqliteImportedSecurityPolicyRepository : SqliteReadWriteRepo
             InsertCommandText,
             static reader => new ImportedSecurityPolicy
             {
-                Index = Convert.ToUInt64(reader.GetInt64(0)),
+                Index = EntityValueCodec.ReadPolicyIndex(reader.GetInt64(0)),
                 Name = reader.GetString(1),
                 FromZones = EntityValueCodec.DeserializeStringList(reader.GetString(2)),
                 SourceAddressReferences = EntityValueCodec.DeserializeStringList(reader.GetString(3)),
@@ -123,7 +123,7 @@ public sealed class SqliteImportedSecurityPolicyRepository : SqliteReadWriteRepo
             },
             static (command, securityPolicy) =>
             {
-                command.Parameters.AddWithValue("$index", checked((long)securityPolicy.Index));
+                command.Parameters.AddWithValue("$index", EntityValueCodec.FormatPolicyIndex(securityPolicy.Index));
                 command.Parameters.AddWithValue("$name", securityPolicy.Name);
                 command.Parameters.AddWithValue("$fromZoneJson", EntityValueCodec.SerializeStringList(securityPolicy.FromZones));
                 command.Parameters.AddWithValue("$sourceAddressesJson", EntityValueCodec.SerializeStringList(securityPolicy.SourceAddressReferences));

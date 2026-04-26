@@ -48,12 +48,12 @@ internal sealed class AtomicMergeCandidate
     /// <summary>
     /// 最小インデックスを取得します。
     /// </summary>
-    public ulong MinimumIndex { get; set; }
+    public uint MinimumIndex { get; set; }
 
     /// <summary>
     /// 最大インデックスを取得します。
     /// </summary>
-    public ulong MaximumIndex { get; set; }
+    public uint MaximumIndex { get; set; }
 
     /// <summary>
     /// 元ポリシー名集合を取得します。

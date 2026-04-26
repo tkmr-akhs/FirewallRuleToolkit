@@ -30,8 +30,8 @@ internal sealed class SecurityPolicyMergeRunResult
     /// </summary>
     public readonly record struct MergeIndexRange(
         SecurityPolicyAction Action,
-        ulong MinimumIndex,
-        ulong MaximumIndex);
+        uint MinimumIndex,
+        uint MaximumIndex);
 
     /// <summary>
     /// 異なるアクション間の衝突範囲です。

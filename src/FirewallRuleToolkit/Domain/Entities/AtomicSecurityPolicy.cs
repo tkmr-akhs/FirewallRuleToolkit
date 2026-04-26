@@ -38,7 +38,7 @@ public sealed class AtomicSecurityPolicy
     /// <summary>
     /// アクションを取得します。
     /// </summary>
-    public SecurityPolicyAction Action { get; init; }
+    public required SecurityPolicyAction Action { get; init; }
 
     /// <summary>
     /// グループ識別子を取得します。
@@ -48,7 +48,7 @@ public sealed class AtomicSecurityPolicy
     /// <summary>
     /// 元ポリシーのインデックスを取得します。
     /// </summary>
-    public ulong OriginalIndex { get; init; }
+    public required uint OriginalIndex { get; init; }
 
     /// <summary>
     /// 元ポリシー名を取得します。

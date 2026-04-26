@@ -68,8 +68,8 @@ public sealed class MergeUseCaseTests
 
         var deny = Assert.Single(written);
         Assert.Equal(SecurityPolicyAction.Deny, deny.Action);
-        Assert.Equal((ulong)10, deny.MinimumIndex);
-        Assert.Equal((ulong)10, deny.MaximumIndex);
+        Assert.Equal((uint)10, deny.MinimumIndex);
+        Assert.Equal((uint)10, deny.MaximumIndex);
         Assert.Equal(
             [167772162u, 167772163u],
             deny.DestinationAddresses.Select(address => address.Start).OrderBy(static value => value));
@@ -136,7 +136,7 @@ public sealed class MergeUseCaseTests
         Assert.Equal(0, exitCode);
         Assert.Equal(2, written.Count);
         Assert.Equal(
-            [30ul, 31ul],
+            [30U, 31U],
             written.Select(policy => policy.MinimumIndex).OrderBy(static value => value));
         Assert.Equal(
             ["deny-atomic", "deny-atomic-2"],
@@ -262,8 +262,8 @@ public sealed class MergeUseCaseTests
         Assert.Equal(0, exitCode);
 
         var merged = Assert.Single(written);
-        Assert.Equal((ulong)10, merged.MinimumIndex);
-        Assert.Equal((ulong)11, merged.MaximumIndex);
+        Assert.Equal((uint)10, merged.MinimumIndex);
+        Assert.Equal((uint)11, merged.MaximumIndex);
         Assert.Equal(["front-policy", "shadowed-policy"], merged.OriginalPolicyNames.OrderBy(static name => name));
     }
 
@@ -326,8 +326,8 @@ public sealed class MergeUseCaseTests
 
         var merged = Assert.Single(written);
         Assert.Equal(SecurityPolicyAction.Allow, merged.Action);
-        Assert.Equal((ulong)20, merged.MinimumIndex);
-        Assert.Equal((ulong)21, merged.MaximumIndex);
+        Assert.Equal((uint)20, merged.MinimumIndex);
+        Assert.Equal((uint)21, merged.MaximumIndex);
         Assert.Equal(["allow-atomic", "deny-atomic"], merged.OriginalPolicyNames.OrderBy(static name => name));
     }
 
@@ -342,11 +342,11 @@ public sealed class MergeUseCaseTests
 
         var overlap = Assert.Single(overlaps);
         Assert.Equal(SecurityPolicyAction.Allow, overlap.Left.Action);
-        Assert.Equal((ulong)10, overlap.Left.MinimumIndex);
-        Assert.Equal((ulong)20, overlap.Left.MaximumIndex);
+        Assert.Equal((uint)10, overlap.Left.MinimumIndex);
+        Assert.Equal((uint)20, overlap.Left.MaximumIndex);
         Assert.Equal(SecurityPolicyAction.Deny, overlap.Right.Action);
-        Assert.Equal((ulong)15, overlap.Right.MinimumIndex);
-        Assert.Equal((ulong)25, overlap.Right.MaximumIndex);
+        Assert.Equal((uint)15, overlap.Right.MinimumIndex);
+        Assert.Equal((uint)25, overlap.Right.MaximumIndex);
     }
 
     [Fact]

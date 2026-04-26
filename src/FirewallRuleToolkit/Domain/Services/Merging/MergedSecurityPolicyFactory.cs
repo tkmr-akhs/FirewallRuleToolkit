@@ -63,8 +63,8 @@ internal static class MergedSecurityPolicyFactory
         IEnumerable<AddressValue> sourceAddresses,
         IEnumerable<AddressValue> destinationAddresses,
         IEnumerable<ServiceValue> services,
-        ulong minimumIndex,
-        ulong maximumIndex,
+        uint minimumIndex,
+        uint maximumIndex,
         IEnumerable<string> originalPolicyNames)
     {
         ArgumentNullException.ThrowIfNull(template);

@@ -60,7 +60,7 @@ public sealed class PaloAltoSecurityPolicyCsvReader : IReadRepository<ImportedSe
 
         return new ImportedSecurityPolicy
         {
-            Index = ulong.Parse(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoSecurityPolicies.IndexHeader)),
+            Index = EntityValueCodec.ParsePolicyIndex(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoSecurityPolicies.IndexHeader)),
             Name = CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoSecurityPolicies.NameHeader),
             FromZones = SplitMultiValue(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoSecurityPolicies.FromZoneHeader)).ToArray(),
             SourceAddressReferences = SplitMultiValue(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoSecurityPolicies.SourceAddressHeader)).ToArray(),

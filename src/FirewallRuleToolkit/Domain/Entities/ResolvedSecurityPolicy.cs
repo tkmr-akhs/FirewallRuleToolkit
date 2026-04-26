@@ -8,7 +8,7 @@ internal sealed class ResolvedSecurityPolicy
     /// <summary>
     /// ポリシー インデックスを取得します。
     /// </summary>
-    public ulong Index { get; init; }
+    public required uint Index { get; init; }
 
     /// <summary>
     /// ポリシー名を取得します。
@@ -48,7 +48,7 @@ internal sealed class ResolvedSecurityPolicy
     /// <summary>
     /// アクションを取得します。
     /// </summary>
-    public SecurityPolicyAction Action { get; init; }
+    public required SecurityPolicyAction Action { get; init; }
 
     /// <summary>
     /// グループ識別子を取得します。

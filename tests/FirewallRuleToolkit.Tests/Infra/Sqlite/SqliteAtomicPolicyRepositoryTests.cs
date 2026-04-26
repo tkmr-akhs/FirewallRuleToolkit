@@ -109,7 +109,7 @@ public sealed class SqliteAtomicPolicyRepositoryTests
         }
     }
 
-    private static AtomicSecurityPolicy CreateAtomicPolicy(ulong originalIndex, string originalPolicyName)
+    private static AtomicSecurityPolicy CreateAtomicPolicy(uint originalIndex, string originalPolicyName)
     {
         return new AtomicSecurityPolicy
         {

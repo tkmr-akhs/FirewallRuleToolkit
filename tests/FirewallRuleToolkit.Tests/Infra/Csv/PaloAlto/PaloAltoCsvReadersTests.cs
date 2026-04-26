@@ -141,6 +141,7 @@ public sealed class PaloAltoCsvReadersTests
 
     [Theory]
     [InlineData("999999999999999999999999999999", "\u8A31\u53EF", typeof(OverflowException))]
+    [InlineData("-1", "\u8A31\u53EF", typeof(OverflowException))]
     [InlineData("1", "invalid-action", typeof(ArgumentException))]
     public void GetAll_WhenSecurityPolicyValueConversionFails_ThrowsRepositoryReadException(
         string index,

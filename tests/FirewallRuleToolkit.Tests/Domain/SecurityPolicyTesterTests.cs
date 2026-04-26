@@ -94,7 +94,7 @@ public sealed class SecurityPolicyTesterTests
     }
 
     private static AtomicSecurityPolicy CreateAtomicPolicy(
-        ulong originalIndex,
+        uint originalIndex,
         string originalPolicyName,
         SecurityPolicyAction action = SecurityPolicyAction.Allow,
         string application = "web-browsing",
@@ -133,8 +133,8 @@ public sealed class SecurityPolicyTesterTests
     }
 
     private static MergedSecurityPolicy CreateMergedPolicy(
-        ulong minimumIndex,
-        ulong maximumIndex,
+        uint minimumIndex,
+        uint maximumIndex,
         SecurityPolicyAction action = SecurityPolicyAction.Allow,
         string application = "web-browsing",
         string fromZone = "trust",

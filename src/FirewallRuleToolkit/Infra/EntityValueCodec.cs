@@ -44,6 +44,41 @@ internal static class EntityValueCodec
     }
 
     /// <summary>
+    /// 永続化された文字列をポリシー インデックスへ変換します。
+    /// </summary>
+    /// <param name="value">変換元の文字列。</param>
+    /// <returns>変換後のポリシー インデックス。</returns>
+    public static uint ParsePolicyIndex(string value)
+    {
+        return uint.Parse(value);
+    }
+
+    /// <summary>
+    /// SQLite から読み取った整数値をポリシー インデックスへ変換します。
+    /// </summary>
+    /// <param name="value">SQLite から読み取った整数値。</param>
+    /// <returns>変換後のポリシー インデックス。</returns>
+    public static uint ReadPolicyIndex(long value)
+    {
+        if (value < 0 || value > uint.MaxValue)
+        {
+            throw new OverflowException($"Policy index is out of UInt32 range: {value}");
+        }
+
+        return (uint)value;
+    }
+
+    /// <summary>
+    /// ポリシー インデックスを SQLite INTEGER として保存できる値へ変換します。
+    /// </summary>
+    /// <param name="value">変換対象のポリシー インデックス。</param>
+    /// <returns>SQLite INTEGER へバインドする値。</returns>
+    public static long FormatPolicyIndex(uint value)
+    {
+        return value;
+    }
+
+    /// <summary>
     /// 元ポリシー名集合を JSON 文字列へ変換します。
     /// </summary>
     /// <param name="originalPolicyNames">変換する元ポリシー名集合。</param>

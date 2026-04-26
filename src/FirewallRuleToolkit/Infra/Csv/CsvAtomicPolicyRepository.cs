@@ -27,7 +27,7 @@ public sealed class CsvAtomicPolicyRepository : CsvReadWriteRepositoryBase<Atomi
                 Service = EntityValueCodec.DeserializeServiceValue(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.AtomicSecurityPolicies.ServiceJsonHeader)),
                 Action = EntityValueCodec.ParseAction(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.AtomicSecurityPolicies.ActionHeader)),
                 GroupId = CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.AtomicSecurityPolicies.GroupIdHeader),
-                OriginalIndex = ulong.Parse(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.AtomicSecurityPolicies.OriginalIndexHeader)),
+                OriginalIndex = EntityValueCodec.ParsePolicyIndex(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.AtomicSecurityPolicies.OriginalIndexHeader)),
                 OriginalPolicyName = CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.AtomicSecurityPolicies.OriginalPolicyNameHeader)
             },
             static atomicPolicy => [

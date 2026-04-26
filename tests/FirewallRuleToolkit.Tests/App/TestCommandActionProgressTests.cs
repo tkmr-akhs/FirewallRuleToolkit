@@ -52,7 +52,7 @@ public sealed class TestUseCaseProgressTests
             },
             Action = SecurityPolicyAction.Allow,
             GroupId = "group-1",
-            OriginalIndex = (ulong)index,
+            OriginalIndex = (uint)index,
             OriginalPolicyName = $"policy-{index}"
         };
     }

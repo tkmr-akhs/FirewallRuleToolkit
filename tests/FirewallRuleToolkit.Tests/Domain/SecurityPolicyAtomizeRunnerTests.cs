@@ -55,7 +55,7 @@ public sealed class SecurityPolicyAtomizeRunnerTests
 
         var skipped = Assert.Single(skippedPolicies);
         Assert.Equal("policy-2", skipped.PolicyName);
-        Assert.Equal((ulong)2, skipped.PolicyIndex);
+        Assert.Equal((uint)2, skipped.PolicyIndex);
         Assert.Equal("Unsupported IPv4 address: invalid", skipped.Reason);
     }
 
@@ -68,7 +68,7 @@ public sealed class SecurityPolicyAtomizeRunnerTests
         return new ImportedSecurityPolicy
         {
             Name = $"policy-{index}",
-            Index = (ulong)index,
+            Index = (uint)index,
             FromZones = ["trust"],
             SourceAddressReferences = (sourceAddressValues ?? [sourceAddressValue]).ToArray(),
             ToZones = ["untrust"],

@@ -19,7 +19,8 @@ public sealed class SqliteMergedSecurityPolicyRepository : SqliteReadWriteReposi
     private const string OriginalPolicyNamesJsonColumn = SqliteDatabaseLayout.MergedSecurityPolicies.OriginalPolicyNamesJsonColumn;
 
     private const string InitializeCommandText =
-        "CREATE TABLE IF NOT EXISTS " + TableName + " (" +
+        "DROP TABLE IF EXISTS " + TableName + ";" +
+        "CREATE TABLE " + TableName + " (" +
         FromZoneJsonColumn + " TEXT NOT NULL, " +
         SourceAddressesJsonColumn + " TEXT NOT NULL, " +
         ToZoneJsonColumn + " TEXT NOT NULL, " +
@@ -28,11 +29,10 @@ public sealed class SqliteMergedSecurityPolicyRepository : SqliteReadWriteReposi
         ServicesJsonColumn + " TEXT NOT NULL, " +
         ActionColumn + " TEXT NOT NULL, " +
         GroupIdColumn + " TEXT NOT NULL, " +
-        MinimumIndexColumn + " INTEGER NOT NULL, " +
-        MaximumIndexColumn + " INTEGER NOT NULL, " +
+        MinimumIndexColumn + " INTEGER NOT NULL CHECK (" + MinimumIndexColumn + " >= 0 AND " + MinimumIndexColumn + " <= 4294967295), " +
+        MaximumIndexColumn + " INTEGER NOT NULL CHECK (" + MaximumIndexColumn + " >= 0 AND " + MaximumIndexColumn + " <= 4294967295), " +
         OriginalPolicyNamesJsonColumn + " TEXT NOT NULL" +
-        ");" +
-        "DELETE FROM " + TableName + ";";
+        ");";
 
     private const string SelectColumns =
         FromZoneJsonColumn + ", " +
@@ -77,8 +77,8 @@ public sealed class SqliteMergedSecurityPolicyRepository : SqliteReadWriteReposi
                 Services = EntityValueCodec.DeserializeServiceValues(reader.GetString(5)).ToHashSet(),
                 Action = EntityValueCodec.ParseAction(reader.GetString(6)),
                 GroupId = reader.GetString(7),
-                MinimumIndex = Convert.ToUInt64(reader.GetInt64(8)),
-                MaximumIndex = Convert.ToUInt64(reader.GetInt64(9)),
+                MinimumIndex = EntityValueCodec.ReadPolicyIndex(reader.GetInt64(8)),
+                MaximumIndex = EntityValueCodec.ReadPolicyIndex(reader.GetInt64(9)),
                 OriginalPolicyNames = EntityValueCodec.DeserializeOriginalPolicyNames(reader.GetString(10))
             },
             static (command, policy) =>
@@ -91,8 +91,8 @@ public sealed class SqliteMergedSecurityPolicyRepository : SqliteReadWriteReposi
                 command.Parameters.AddWithValue("$servicesJson", EntityValueCodec.SerializeServiceValues(policy.Services));
                 command.Parameters.AddWithValue("$action", EntityValueCodec.FormatAction(policy.Action));
                 command.Parameters.AddWithValue("$groupId", policy.GroupId);
-                command.Parameters.AddWithValue("$minimumIndex", checked((long)policy.MinimumIndex));
-                command.Parameters.AddWithValue("$maximumIndex", checked((long)policy.MaximumIndex));
+                command.Parameters.AddWithValue("$minimumIndex", EntityValueCodec.FormatPolicyIndex(policy.MinimumIndex));
+                command.Parameters.AddWithValue("$maximumIndex", EntityValueCodec.FormatPolicyIndex(policy.MaximumIndex));
                 command.Parameters.AddWithValue("$originalPolicyNamesJson", EntityValueCodec.SerializeOriginalPolicyNames(policy.OriginalPolicyNames));
             })
     {
@@ -115,8 +115,8 @@ public sealed class SqliteMergedSecurityPolicyRepository : SqliteReadWriteReposi
                 Services = EntityValueCodec.DeserializeServiceValues(reader.GetString(5)).ToHashSet(),
                 Action = EntityValueCodec.ParseAction(reader.GetString(6)),
                 GroupId = reader.GetString(7),
-                MinimumIndex = Convert.ToUInt64(reader.GetInt64(8)),
-                MaximumIndex = Convert.ToUInt64(reader.GetInt64(9)),
+                MinimumIndex = EntityValueCodec.ReadPolicyIndex(reader.GetInt64(8)),
+                MaximumIndex = EntityValueCodec.ReadPolicyIndex(reader.GetInt64(9)),
                 OriginalPolicyNames = EntityValueCodec.DeserializeOriginalPolicyNames(reader.GetString(10))
             },
             static (command, policy) =>
@@ -129,8 +129,8 @@ public sealed class SqliteMergedSecurityPolicyRepository : SqliteReadWriteReposi
                 command.Parameters.AddWithValue("$servicesJson", EntityValueCodec.SerializeServiceValues(policy.Services));
                 command.Parameters.AddWithValue("$action", EntityValueCodec.FormatAction(policy.Action));
                 command.Parameters.AddWithValue("$groupId", policy.GroupId);
-                command.Parameters.AddWithValue("$minimumIndex", checked((long)policy.MinimumIndex));
-                command.Parameters.AddWithValue("$maximumIndex", checked((long)policy.MaximumIndex));
+                command.Parameters.AddWithValue("$minimumIndex", EntityValueCodec.FormatPolicyIndex(policy.MinimumIndex));
+                command.Parameters.AddWithValue("$maximumIndex", EntityValueCodec.FormatPolicyIndex(policy.MaximumIndex));
                 command.Parameters.AddWithValue("$originalPolicyNamesJson", EntityValueCodec.SerializeOriginalPolicyNames(policy.OriginalPolicyNames));
             })
     {

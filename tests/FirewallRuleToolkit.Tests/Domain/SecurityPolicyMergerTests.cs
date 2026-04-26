@@ -47,8 +47,8 @@ public sealed class SecurityPolicyMergerTests
         var merged = merger.MergePartition(source);
 
         var policy = Assert.Single(merged);
-        Assert.Equal((ulong)10, policy.MinimumIndex);
-        Assert.Equal((ulong)11, policy.MaximumIndex);
+        Assert.Equal((uint)10, policy.MinimumIndex);
+        Assert.Equal((uint)11, policy.MaximumIndex);
         Assert.Equal(2, policy.Services.Count);
         Assert.Contains("tcp-rule", policy.OriginalPolicyNames);
         Assert.Contains("udp-rule", policy.OriginalPolicyNames);
@@ -173,8 +173,8 @@ public sealed class SecurityPolicyMergerTests
 
         var policy = Assert.Single(merged);
         Assert.Equal(SecurityPolicyAction.Deny, policy.Action);
-        Assert.Equal((ulong)25, policy.MinimumIndex);
-        Assert.Equal((ulong)25, policy.MaximumIndex);
+        Assert.Equal((uint)25, policy.MinimumIndex);
+        Assert.Equal((uint)25, policy.MaximumIndex);
         Assert.Equal([100u, 101u], policy.SourceAddresses.Select(address => address.Start).OrderBy(value => value));
         Assert.Equal([200u, 201u], policy.DestinationAddresses.Select(address => address.Start).OrderBy(value => value));
         Assert.Equal([6u, 17u], policy.Services.Select(service => service.ProtocolStart).OrderBy(value => value));
@@ -291,8 +291,8 @@ public sealed class SecurityPolicyMergerTests
             merged,
             combinedPolicy =>
             {
-                Assert.Equal((ulong)30, combinedPolicy.MinimumIndex);
-                Assert.Equal((ulong)31, combinedPolicy.MaximumIndex);
+                Assert.Equal((uint)30, combinedPolicy.MinimumIndex);
+                Assert.Equal((uint)31, combinedPolicy.MaximumIndex);
                 Assert.Equal([100u], combinedPolicy.SourceAddresses.Select(address => address.Start).OrderBy(value => value));
                 Assert.Equal([200u], combinedPolicy.DestinationAddresses.Select(address => address.Start).OrderBy(value => value));
                 Assert.Equal([6u, 17u], combinedPolicy.Services.Select(service => service.ProtocolStart).OrderBy(value => value));
@@ -300,8 +300,8 @@ public sealed class SecurityPolicyMergerTests
             },
             tcpPolicy =>
             {
-                Assert.Equal((ulong)32, tcpPolicy.MinimumIndex);
-                Assert.Equal((ulong)32, tcpPolicy.MaximumIndex);
+                Assert.Equal((uint)32, tcpPolicy.MinimumIndex);
+                Assert.Equal((uint)32, tcpPolicy.MaximumIndex);
                 Assert.Equal([100u], tcpPolicy.SourceAddresses.Select(address => address.Start).OrderBy(value => value));
                 Assert.Equal([201u], tcpPolicy.DestinationAddresses.Select(address => address.Start).OrderBy(value => value));
                 Assert.Equal([6u], tcpPolicy.Services.Select(service => service.ProtocolStart).OrderBy(value => value));
@@ -309,8 +309,8 @@ public sealed class SecurityPolicyMergerTests
             },
             udpPolicy =>
             {
-                Assert.Equal((ulong)33, udpPolicy.MinimumIndex);
-                Assert.Equal((ulong)33, udpPolicy.MaximumIndex);
+                Assert.Equal((uint)33, udpPolicy.MinimumIndex);
+                Assert.Equal((uint)33, udpPolicy.MaximumIndex);
                 Assert.Equal([101u], udpPolicy.SourceAddresses.Select(address => address.Start).OrderBy(value => value));
                 Assert.Equal([200u], udpPolicy.DestinationAddresses.Select(address => address.Start).OrderBy(value => value));
                 Assert.Equal([17u], udpPolicy.Services.Select(service => service.ProtocolStart).OrderBy(value => value));
@@ -377,8 +377,8 @@ public sealed class SecurityPolicyMergerTests
         var merged = merger.MergePartition(source);
 
         var policy = Assert.Single(merged);
-        Assert.Equal((ulong)40, policy.MinimumIndex);
-        Assert.Equal((ulong)43, policy.MaximumIndex);
+        Assert.Equal((uint)40, policy.MinimumIndex);
+        Assert.Equal((uint)43, policy.MaximumIndex);
         Assert.Equal([100u, 101u], policy.SourceAddresses.Select(address => address.Start).OrderBy(value => value));
         Assert.Equal([200u, 201u], policy.DestinationAddresses.Select(address => address.Start).OrderBy(value => value));
         Assert.Equal(["a", "b", "c", "d"], policy.OriginalPolicyNames.OrderBy(value => value));
@@ -421,8 +421,8 @@ public sealed class SecurityPolicyMergerTests
         var merged = merger.MergePartition(source);
 
         var policy = Assert.Single(merged);
-        Assert.Equal((ulong)44, policy.MinimumIndex);
-        Assert.Equal((ulong)45, policy.MaximumIndex);
+        Assert.Equal((uint)44, policy.MinimumIndex);
+        Assert.Equal((uint)45, policy.MaximumIndex);
         Assert.Equal(["any"], policy.Applications.OrderBy(value => value));
         Assert.Equal(["any-app", "specific-app"], policy.OriginalPolicyNames.OrderBy(value => value));
     }
@@ -464,8 +464,8 @@ public sealed class SecurityPolicyMergerTests
         var merged = merger.MergePartition(source);
 
         var policy = Assert.Single(merged);
-        Assert.Equal((ulong)44, policy.MinimumIndex);
-        Assert.Equal((ulong)45, policy.MaximumIndex);
+        Assert.Equal((uint)44, policy.MinimumIndex);
+        Assert.Equal((uint)45, policy.MaximumIndex);
         Assert.Equal(["ANY"], policy.Applications.OrderBy(value => value));
         Assert.Equal(["any-app", "specific-app"], policy.OriginalPolicyNames.OrderBy(value => value));
     }
@@ -671,8 +671,8 @@ public sealed class SecurityPolicyMergerTests
         var merged = merger.MergePartition(source);
 
         var policy = Assert.Single(merged);
-        Assert.Equal((ulong)60, policy.MinimumIndex);
-        Assert.Equal((ulong)63, policy.MaximumIndex);
+        Assert.Equal((uint)60, policy.MinimumIndex);
+        Assert.Equal((uint)63, policy.MaximumIndex);
         Assert.Equal(2, policy.Services.Count);
         Assert.Equal([100u, 101u], policy.SourceAddresses.Select(address => address.Start).OrderBy(value => value));
     }
@@ -771,8 +771,8 @@ public sealed class SecurityPolicyMergerTests
 
         var policy = Assert.Single(merged);
         Assert.Equal(3, policy.Services.Count);
-        Assert.Equal((ulong)70, policy.MinimumIndex);
-        Assert.Equal((ulong)75, policy.MaximumIndex);
+        Assert.Equal((uint)70, policy.MinimumIndex);
+        Assert.Equal((uint)75, policy.MaximumIndex);
         Assert.Equal([200u, 201u], policy.DestinationAddresses.Select(address => address.Start).OrderBy(value => value));
     }
 
@@ -1221,7 +1221,7 @@ public sealed class SecurityPolicyMergerTests
     }
 
     private static AtomicMergeCandidate CreateAtomicPolicy(
-        ulong originalIndex,
+        uint originalIndex,
         string originalPolicyName,
         uint sourceAddressStart,
         uint sourceAddressFinish,
@@ -1271,7 +1271,7 @@ public sealed class SecurityPolicyMergerTests
     }
 
     private static MergedSecurityPolicy CreateMergedPolicy(
-        ulong originalIndex,
+        uint originalIndex,
         string originalPolicyName,
         IReadOnlyCollection<uint> sourceAddresses,
         IReadOnlyCollection<uint> destinationAddresses,
@@ -1344,7 +1344,7 @@ public sealed class SecurityPolicyMergerTests
                 }
                 catch (IOException)
                 {
-                    // 共有ロガー破棄直後は一時的にハンドルが残ることがあるため、後始末はベストエフォートとする。
+                    // ???L???K?[?j?????????I??n???h?????c?�?????????A??n????x?X?g?G?t?H?[?g?????B
                 }
             }
         }
@@ -1362,8 +1362,8 @@ public sealed class SecurityPolicyMergerTests
         IReadOnlyCollection<uint> sourceAddresses,
         IReadOnlyCollection<uint> destinationAddresses,
         IReadOnlyCollection<uint> destinationPorts,
-        ulong minimumIndex,
-        ulong maximumIndex,
+        uint minimumIndex,
+        uint maximumIndex,
         IReadOnlyCollection<string> originalPolicyNames)
     {
         var expectedSourceAddresses = sourceAddresses.OrderBy(static value => value).ToArray();

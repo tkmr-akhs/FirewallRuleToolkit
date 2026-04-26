@@ -100,7 +100,7 @@ public sealed class AtomizeUseCaseTests
         return new ImportedSecurityPolicy
         {
             Name = $"policy-{index}",
-            Index = (ulong)index,
+            Index = (uint)index,
             FromZones = ["trust"],
             SourceAddressReferences = [sourceAddressValue],
             ToZones = ["untrust"],

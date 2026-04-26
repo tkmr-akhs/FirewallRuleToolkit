@@ -8,7 +8,7 @@ public sealed class ServiceObject
     /// <summary>
     /// オブジェクト名を取得します。
     /// </summary>
-    public string Name { get; init; } = string.Empty;
+    public required string Name { get; init; } = string.Empty;
 
     /// <summary>
     /// IP プロトコルを取得します。

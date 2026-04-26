@@ -21,7 +21,8 @@ public sealed class SqliteAtomicPolicyRepository : SqliteReadWriteRepositoryBase
     private const string ServiceKindJsonPath = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceKindJsonPath;
 
     private const string InitializeCommandText =
-        "CREATE TABLE IF NOT EXISTS " + TableName + " (" +
+        "DROP TABLE IF EXISTS " + TableName + ";" +
+        "CREATE TABLE " + TableName + " (" +
         FromZoneColumn + " TEXT NOT NULL, " +
         SourceAddressJsonColumn + " TEXT NOT NULL, " +
         ToZoneColumn + " TEXT NOT NULL, " +
@@ -30,10 +31,9 @@ public sealed class SqliteAtomicPolicyRepository : SqliteReadWriteRepositoryBase
         ServiceJsonColumn + " TEXT NOT NULL, " +
         ActionColumn + " TEXT NOT NULL, " +
         GroupIdColumn + " TEXT NOT NULL, " +
-        OriginalIndexColumn + " INTEGER NOT NULL, " +
+        OriginalIndexColumn + " INTEGER NOT NULL CHECK (" + OriginalIndexColumn + " >= 0 AND " + OriginalIndexColumn + " <= 4294967295), " +
         OriginalPolicyNameColumn + " TEXT NOT NULL" +
-        ");" +
-        "DELETE FROM " + TableName + ";";
+        ");";
 
     private const string SelectColumns =
         FromZoneColumn + ", " +
@@ -87,7 +87,7 @@ public sealed class SqliteAtomicPolicyRepository : SqliteReadWriteRepositoryBase
                 command.Parameters.AddWithValue("$serviceJson", EntityValueCodec.SerializeServiceValue(atomicPolicy.Service));
                 command.Parameters.AddWithValue("$action", EntityValueCodec.FormatAction(atomicPolicy.Action));
                 command.Parameters.AddWithValue("$groupId", atomicPolicy.GroupId);
-                command.Parameters.AddWithValue("$originalIndex", checked((long)atomicPolicy.OriginalIndex));
+                command.Parameters.AddWithValue("$originalIndex", EntityValueCodec.FormatPolicyIndex(atomicPolicy.OriginalIndex));
                 command.Parameters.AddWithValue("$originalPolicyName", atomicPolicy.OriginalPolicyName);
             })
     {
@@ -111,7 +111,7 @@ public sealed class SqliteAtomicPolicyRepository : SqliteReadWriteRepositoryBase
                 command.Parameters.AddWithValue("$serviceJson", EntityValueCodec.SerializeServiceValue(atomicPolicy.Service));
                 command.Parameters.AddWithValue("$action", EntityValueCodec.FormatAction(atomicPolicy.Action));
                 command.Parameters.AddWithValue("$groupId", atomicPolicy.GroupId);
-                command.Parameters.AddWithValue("$originalIndex", checked((long)atomicPolicy.OriginalIndex));
+                command.Parameters.AddWithValue("$originalIndex", EntityValueCodec.FormatPolicyIndex(atomicPolicy.OriginalIndex));
                 command.Parameters.AddWithValue("$originalPolicyName", atomicPolicy.OriginalPolicyName);
             })
     {
@@ -155,7 +155,7 @@ public sealed class SqliteAtomicPolicyRepository : SqliteReadWriteRepositoryBase
             Service = EntityValueCodec.DeserializeServiceValue(reader.GetString(5)),
             Action = EntityValueCodec.ParseAction(reader.GetString(6)),
             GroupId = reader.GetString(7),
-            OriginalIndex = Convert.ToUInt64(reader.GetInt64(8)),
+            OriginalIndex = EntityValueCodec.ReadPolicyIndex(reader.GetInt64(8)),
             OriginalPolicyName = reader.GetString(9)
         };
     }

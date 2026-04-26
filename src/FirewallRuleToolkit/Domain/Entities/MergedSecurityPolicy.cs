@@ -99,7 +99,7 @@ public sealed class MergedSecurityPolicy
     /// <summary>
     /// アクションを取得します。
     /// </summary>
-    public SecurityPolicyAction Action { get; init; }
+    public required SecurityPolicyAction Action { get; init; }
 
     /// <summary>
     /// グループ識別子を取得します。
@@ -109,17 +109,17 @@ public sealed class MergedSecurityPolicy
     /// <summary>
     /// 最小インデックスを取得します。
     /// </summary>
-    public ulong MinimumIndex { get; init; }
+    public required uint MinimumIndex { get; init; }
 
     /// <summary>
     /// 最大インデックスを取得します。
     /// </summary>
-    public ulong MaximumIndex { get; init; }
+    public required uint MaximumIndex { get; init; }
 
     /// <summary>
     /// 元ポリシー名集合を取得します。
     /// </summary>
-    public IReadOnlyCollection<string> OriginalPolicyNames
+    public required IReadOnlyCollection<string> OriginalPolicyNames
     {
         get => originalPolicyNames;
         init => originalPolicyNames = CreateFrozenStringSet(value);

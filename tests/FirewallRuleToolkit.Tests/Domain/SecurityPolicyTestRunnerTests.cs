@@ -119,7 +119,7 @@ public sealed class SecurityPolicyTestRunnerTests
         Assert.False(finding.IsShadowed);
         Assert.Equal(SecurityPolicyTestRunner.FindingKind.MissingContainingMergedPolicy, finding.Kind);
         Assert.Null(finding.MatchedMergedPolicy);
-        Assert.Equal((ulong)10, finding.AtomicPolicy.OriginalIndex);
+        Assert.Equal((uint)10, finding.AtomicPolicy.OriginalIndex);
     }
 
     [Fact]
@@ -230,7 +230,7 @@ public sealed class SecurityPolicyTestRunnerTests
 
         var atomicPolicies = Enumerable.Range(1, 4500)
             .Select(index => CreateAtomicPolicy(
-                originalIndex: (ulong)index,
+                originalIndex: (uint)index,
                 originalPolicyName: $"policy-{index}",
                 sourceStart: (uint)index,
                 sourceFinish: (uint)index,
@@ -261,7 +261,7 @@ public sealed class SecurityPolicyTestRunnerTests
     }
 
     private static AtomicSecurityPolicy CreateAtomicPolicy(
-        ulong originalIndex,
+        uint originalIndex,
         string originalPolicyName,
         SecurityPolicyAction action = SecurityPolicyAction.Allow,
         string application = "web-browsing",
@@ -300,8 +300,8 @@ public sealed class SecurityPolicyTestRunnerTests
     }
 
     private static MergedSecurityPolicy CreateMergedPolicy(
-        ulong minimumIndex,
-        ulong maximumIndex,
+        uint minimumIndex,
+        uint maximumIndex,
         SecurityPolicyAction action = SecurityPolicyAction.Allow,
         string application = "web-browsing",
         string fromZone = "trust",

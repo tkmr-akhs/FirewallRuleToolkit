@@ -201,6 +201,61 @@ public sealed class SqliteRepositorySessionTests
         }
     }
 
+    public static IEnumerable<object[]> PolicyIndexColumns()
+    {
+        var invalidValues = new[] { -1L, 4294967296L };
+        foreach (var invalidValue in invalidValues)
+        {
+            yield return
+            [
+                SqliteDatabaseLayout.SecurityPolicies.TableName,
+                SqliteDatabaseLayout.SecurityPolicies.PolicyIndexColumn,
+                invalidValue
+            ];
+            yield return
+            [
+                SqliteDatabaseLayout.AtomicSecurityPolicies.TableName,
+                SqliteDatabaseLayout.AtomicSecurityPolicies.OriginalIndexColumn,
+                invalidValue
+            ];
+            yield return
+            [
+                SqliteDatabaseLayout.MergedSecurityPolicies.TableName,
+                SqliteDatabaseLayout.MergedSecurityPolicies.MinimumIndexColumn,
+                invalidValue
+            ];
+            yield return
+            [
+                SqliteDatabaseLayout.MergedSecurityPolicies.TableName,
+                SqliteDatabaseLayout.MergedSecurityPolicies.MaximumIndexColumn,
+                invalidValue
+            ];
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(PolicyIndexColumns))]
+    public void PolicyIndexColumns_RejectValuesOutsideUInt32Range(
+        string tableName,
+        string columnName,
+        long invalidValue)
+    {
+        var databaseDirectory = CreateTempDatabaseDirectory();
+
+        try
+        {
+            new SqliteImportedSecurityPolicyRepository(databaseDirectory).ReplaceAll([CreateImportedPolicy()]);
+            new SqliteAtomicPolicyRepository(databaseDirectory).ReplaceAll([CreateAtomicPolicy(10, "atomic-policy")]);
+            new SqliteMergedSecurityPolicyRepository(databaseDirectory).ReplaceAll([CreateMergedPolicy()]);
+
+            Assert.Throws<SqliteException>(() => UpdateIndexColumn(databaseDirectory, tableName, columnName, invalidValue));
+        }
+        finally
+        {
+            DeleteDatabaseDirectory(databaseDirectory);
+        }
+    }
+
     private static ImportedSecurityPolicy CreateImportedPolicy()
     {
         return new ImportedSecurityPolicy
@@ -218,7 +273,7 @@ public sealed class SqliteRepositorySessionTests
         };
     }
 
-    private static AtomicSecurityPolicy CreateAtomicPolicy(ulong originalIndex, string originalPolicyName)
+    private static AtomicSecurityPolicy CreateAtomicPolicy(uint originalIndex, string originalPolicyName)
     {
         return new AtomicSecurityPolicy
         {
@@ -242,6 +297,51 @@ public sealed class SqliteRepositorySessionTests
             OriginalIndex = originalIndex,
             OriginalPolicyName = originalPolicyName
         };
+    }
+
+    private static MergedSecurityPolicy CreateMergedPolicy()
+    {
+        return new MergedSecurityPolicy
+        {
+            FromZones = ["trust"],
+            SourceAddresses = [new AddressValue { Start = 1, Finish = 1 }],
+            ToZones = ["untrust"],
+            DestinationAddresses = [new AddressValue { Start = 2, Finish = 2 }],
+            Applications = ["any"],
+            Services =
+            [
+                new ServiceValue
+                {
+                    ProtocolStart = 6,
+                    ProtocolFinish = 6,
+                    SourcePortStart = 0,
+                    SourcePortFinish = 65535,
+                    DestinationPortStart = 80,
+                    DestinationPortFinish = 80,
+                    Kind = "service"
+                }
+            ],
+            Action = SecurityPolicyAction.Allow,
+            GroupId = "group-a",
+            MinimumIndex = 10,
+            MaximumIndex = 10,
+            OriginalPolicyNames = ["merged-policy"]
+        };
+    }
+
+    private static void UpdateIndexColumn(
+        string databaseDirectory,
+        string tableName,
+        string columnName,
+        long value)
+    {
+        var databasePath = Path.Combine(databaseDirectory, SqliteDatabaseLayout.DatabaseFileName);
+
+        using var connection = SqliteRepositoryHelper.OpenConnection(databasePath);
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE " + tableName + " SET " + columnName + " = $value;";
+        command.Parameters.AddWithValue("$value", value);
+        command.ExecuteNonQuery();
     }
 
     private static void CreateAddressObjectDatabaseInRollbackJournalMode(string databaseDirectory)

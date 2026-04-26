@@ -122,6 +122,6 @@ internal sealed class SecurityPolicyAtomizeRunner
     /// <param name="Reason">スキップ理由。</param>
     public readonly record struct SkippedPolicy(
         string PolicyName,
-        ulong PolicyIndex,
+        uint PolicyIndex,
         string Reason);
 }
