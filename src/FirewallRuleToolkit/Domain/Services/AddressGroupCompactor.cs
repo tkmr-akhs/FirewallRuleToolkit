@@ -13,19 +13,19 @@ public sealed class AddressGroupCompactor
     /// <param name="rangeSplitThreshold">ハイフン範囲を分解するしきい値。</param>
     public AddressGroupCompactor(
         IReadRepository<AddressGroupMembership> addressGroups,
-        ILookupRepository<string> addressObjectLookup,
+        ILookupRepository<string> addressDefinitionLookup,
         ILookupRepository<IReadOnlyList<string>> addressGroupLookup,
         int rangeSplitThreshold)
     {
         ArgumentNullException.ThrowIfNull(addressGroups);
-        ArgumentNullException.ThrowIfNull(addressObjectLookup);
+        ArgumentNullException.ThrowIfNull(addressDefinitionLookup);
         ArgumentNullException.ThrowIfNull(addressGroupLookup);
         if (rangeSplitThreshold <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(rangeSplitThreshold), rangeSplitThreshold, "Threshold must be greater than zero.");
         }
 
-        groupCandidates = BuildGroupCandidates(addressGroups, addressObjectLookup, addressGroupLookup, rangeSplitThreshold);
+        groupCandidates = BuildGroupCandidates(addressGroups, addressDefinitionLookup, addressGroupLookup, rangeSplitThreshold);
     }
 
     /// <summary>
@@ -64,23 +64,23 @@ public sealed class AddressGroupCompactor
     /// リポジトリから圧縮候補となるグループ索引を構築します。
     /// </summary>
     /// <param name="addressGroups">アドレス グループ repository。</param>
-    /// <param name="addressObjectLookup">アドレス オブジェクト lookup。</param>
+    /// <param name="addressDefinitionLookup">名前付きアドレス定義 lookup。</param>
     /// <param name="addressGroupLookup">アドレス グループ lookup。</param>
     /// <param name="rangeSplitThreshold">ハイフン範囲を分解するしきい値。</param>
     /// <returns>前計算済みのグループ候補一覧。</returns>
     private static IReadOnlyList<GroupCandidate> BuildGroupCandidates(
         IReadRepository<AddressGroupMembership> addressGroups,
-        ILookupRepository<string> addressObjectLookup,
+        ILookupRepository<string> addressDefinitionLookup,
         ILookupRepository<IReadOnlyList<string>> addressGroupLookup,
         int rangeSplitThreshold)
     {
-        var resolver = new AddressReferenceResolver(addressObjectLookup, addressGroupLookup);
+        var resolver = new AddressReferenceResolver(addressDefinitionLookup, addressGroupLookup);
         return addressGroups
             .GetAll()
             .GroupBy(static member => member.GroupName, StringComparer.Ordinal)
             .Select(group =>
             {
-                var resolvedAddresses = AddressObjectExpander
+                var resolvedAddresses = ResolvedAddressExpander
                     .Expand(resolver.Resolve([group.Key]), rangeSplitThreshold)
                     .ToHashSet();
 

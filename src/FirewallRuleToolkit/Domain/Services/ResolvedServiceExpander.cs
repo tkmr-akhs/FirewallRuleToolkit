@@ -1,17 +1,17 @@
 ﻿namespace FirewallRuleToolkit.Domain.Services;
 
 /// <summary>
-/// サービス オブジェクトを数値範囲へ正規化し、必要に応じて単一値へ展開します。
+/// 解決済みサービス定義を数値範囲へ正規化し、必要に応じて単一値へ展開します。
 /// </summary>
-internal static class ServiceObjectExpander
+internal static class ResolvedServiceExpander
 {
     /// <summary>
-    /// サービス オブジェクト群を、必要に応じて単一値まで展開したサービス範囲列へ変換します。
+    /// 解決済みサービス定義群を、必要に応じて単一値まで展開したサービス範囲列へ変換します。
     /// </summary>
-    /// <param name="services">変換対象のサービス オブジェクト列。</param>
+    /// <param name="services">変換対象の解決済みサービス定義列。</param>
     /// <param name="threshold">範囲を分解するしきい値。</param>
     /// <returns>展開後のサービス範囲列。</returns>
-    public static IEnumerable<ServiceValue> Expand(IEnumerable<ServiceObject> services, int threshold)
+    public static IEnumerable<ServiceValue> Expand(IEnumerable<ResolvedService> services, int threshold)
     {
         ArgumentNullException.ThrowIfNull(services);
         ValidateThreshold(threshold);
@@ -26,24 +26,23 @@ internal static class ServiceObjectExpander
     }
 
     /// <summary>
-    /// サービス オブジェクト 1 件をサービス範囲列へ変換します。
+    /// 解決済みサービス定義 1 件をサービス範囲列へ変換します。
     /// </summary>
-    /// <param name="service">変換対象のサービス オブジェクト。</param>
+    /// <param name="service">変換対象の解決済みサービス定義。</param>
     /// <returns>変換したサービス範囲列。</returns>
-    public static IEnumerable<ServiceValue> Parse(ServiceObject service)
+    public static IEnumerable<ServiceValue> Parse(ResolvedService service)
     {
         return ServiceValueParser.Parse(service);
     }
 
     /// <summary>
-    /// サービス オブジェクト 1 件を、必要に応じて単一値まで展開したサービス範囲列へ変換します。
+    /// 解決済みサービス定義 1 件を、必要に応じて単一値まで展開したサービス範囲列へ変換します。
     /// </summary>
-    /// <param name="service">変換対象のサービス オブジェクト。</param>
+    /// <param name="service">変換対象の解決済みサービス定義。</param>
     /// <param name="threshold">範囲を分解するしきい値。</param>
     /// <returns>展開後のサービス範囲列。</returns>
-    public static IEnumerable<ServiceValue> Expand(ServiceObject service, int threshold)
+    public static IEnumerable<ServiceValue> Expand(ResolvedService service, int threshold)
     {
-        ArgumentNullException.ThrowIfNull(service);
         ValidateThreshold(threshold);
 
         foreach (var parsed in ServiceValueParser.Parse(service))

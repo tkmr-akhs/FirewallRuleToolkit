@@ -4,20 +4,20 @@ using Microsoft.Data.Sqlite;
 
 namespace FirewallRuleToolkit.Tests.Infra.Sqlite;
 
-public sealed class SqliteServiceObjectRepositoryTests
+public sealed class SqliteServiceDefinitionRepositoryTests
 {
     [Fact]
-    public void ReplaceAll_CreatesServiceObjectsTableWithKindColumn()
+    public void ReplaceAll_CreatesServiceDefinitionsTableWithKindColumn()
     {
         var databaseDirectory = CreateTempDatabaseDirectory();
         var databasePath = Path.Combine(databaseDirectory, SqliteDatabaseLayout.DatabaseFileName);
 
         try
         {
-            var store = new SqliteServiceObjectRepository(databaseDirectory);
+            var store = new SqliteServiceDefinitionRepository(databaseDirectory);
             store.ReplaceAll(
             [
-                new ServiceObject
+                new ServiceDefinition
                 {
                     Name = "svc-web",
                     Protocol = "6",
@@ -58,10 +58,10 @@ public sealed class SqliteServiceObjectRepositoryTests
 
         try
         {
-            var store = new SqliteServiceObjectRepository(databaseDirectory);
+            var store = new SqliteServiceDefinitionRepository(databaseDirectory);
             store.ReplaceAll(
             [
-                new ServiceObject
+                new ServiceDefinition
                 {
                     Name = "svc-web",
                     Protocol = "6",
@@ -71,14 +71,14 @@ public sealed class SqliteServiceObjectRepositoryTests
                 }
             ]);
 
-            var serviceObject = Assert.Single(store.GetAll());
+            var serviceDefinition = Assert.Single(store.GetAll());
 
-            Assert.NotNull(serviceObject);
-            Assert.Equal("svc-web", serviceObject.Name);
-            Assert.Equal("6", serviceObject.Protocol);
-            Assert.Equal("1-65535", serviceObject.SourcePort);
-            Assert.Equal("443", serviceObject.DestinationPort);
-            Assert.Equal("application-default", serviceObject.Kind);
+            Assert.NotNull(serviceDefinition);
+            Assert.Equal("svc-web", serviceDefinition.Name);
+            Assert.Equal("6", serviceDefinition.Protocol);
+            Assert.Equal("1-65535", serviceDefinition.SourcePort);
+            Assert.Equal("443", serviceDefinition.DestinationPort);
+            Assert.Equal("application-default", serviceDefinition.Kind);
         }
         finally
         {

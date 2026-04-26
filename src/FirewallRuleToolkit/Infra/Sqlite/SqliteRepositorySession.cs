@@ -10,9 +10,9 @@ internal sealed class SqliteRepositorySession : IWriteRepositorySession
     public SqliteRepositorySession(SqliteWriteTransaction transaction)
     {
         this.transaction = transaction ?? throw new ArgumentNullException(nameof(transaction));
-        AddressObjects = new SqliteAddressObjectRepository(transaction);
+        AddressDefinitions = new SqliteAddressDefinitionRepository(transaction);
         AddressGroups = new SqliteAddressGroupRepository(transaction);
-        ServiceObjects = new SqliteServiceObjectRepository(transaction);
+        ServiceDefinitions = new SqliteServiceDefinitionRepository(transaction);
         ServiceGroups = new SqliteServiceGroupRepository(transaction);
         ImportedSecurityPolicies = new SqliteImportedSecurityPolicyRepository(transaction);
         AtomicPolicies = new SqliteAtomicPolicyRepository(transaction);
@@ -20,11 +20,11 @@ internal sealed class SqliteRepositorySession : IWriteRepositorySession
         ToolMetadata = new SqliteToolMetadataRepository(transaction);
     }
 
-    public IReadWriteRepository<AddressObject> AddressObjects { get; }
+    public IReadWriteRepository<AddressDefinition> AddressDefinitions { get; }
 
     public IReadWriteRepository<AddressGroupMembership> AddressGroups { get; }
 
-    public IReadWriteRepository<ServiceObject> ServiceObjects { get; }
+    public IReadWriteRepository<ServiceDefinition> ServiceDefinitions { get; }
 
     public IReadWriteRepository<ServiceGroupMembership> ServiceGroups { get; }
 

@@ -25,7 +25,7 @@ internal static class CommandDescriptions
     public static string Import =>
         """
         Palo Alto Networks 形式の CSV を作業用 SQLite データベースへ取り込みます。
-        未解決のアドレス / サービス参照と各種オブジェクト定義を保存し、
+        未解決のアドレス / サービス参照と各種定義を保存し、
         後続の atomize で参照解決できる状態を作るため、
         後続の atomize / merge / export / stat の起点になるコマンドです。
 

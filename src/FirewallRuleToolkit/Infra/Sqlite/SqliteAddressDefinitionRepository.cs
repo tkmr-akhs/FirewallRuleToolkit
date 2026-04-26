@@ -1,13 +1,13 @@
 ﻿namespace FirewallRuleToolkit.Infra.Sqlite;
 
 /// <summary>
-/// アドレス オブジェクトを SQLite で読み書きします。
+/// 名前付きアドレス定義を SQLite で読み書きします。
 /// </summary>
-public sealed class SqliteAddressObjectRepository : SqliteReadWriteRepositoryBase<AddressObject>
+public sealed class SqliteAddressDefinitionRepository : SqliteReadWriteRepositoryBase<AddressDefinition>
 {
-    private const string TableName = SqliteDatabaseLayout.AddressObjects.TableName;
-    private const string NameColumn = SqliteDatabaseLayout.AddressObjects.NameColumn;
-    private const string ValueColumn = SqliteDatabaseLayout.AddressObjects.ValueColumn;
+    private const string TableName = SqliteDatabaseLayout.AddressDefinitions.TableName;
+    private const string NameColumn = SqliteDatabaseLayout.AddressDefinitions.NameColumn;
+    private const string ValueColumn = SqliteDatabaseLayout.AddressDefinitions.ValueColumn;
 
     private const string InitializeCommandText =
         "CREATE TABLE IF NOT EXISTS " + TableName + " (" +
@@ -26,45 +26,45 @@ public sealed class SqliteAddressObjectRepository : SqliteReadWriteRepositoryBas
         "VALUES ($name, $value);";
 
     /// <summary>
-    /// アドレス オブジェクトを SQLite で読み書きするクラスのコンストラクターです。
+    /// 名前付きアドレス定義を SQLite で読み書きするクラスのコンストラクターです。
     /// </summary>
     /// <param name="databaseDirectory">SQLite データベース ディレクトリ。</param>
-    public SqliteAddressObjectRepository(string databaseDirectory)
+    public SqliteAddressDefinitionRepository(string databaseDirectory)
         : base(
             databaseDirectory,
             TableName,
             InitializeCommandText,
             SelectAllCommandText,
             InsertCommandText,
-            static reader => new AddressObject
+            static reader => new AddressDefinition
             {
                 Name = reader.GetString(0),
                 Value = reader.GetString(1)
             },
-            static (command, addressObject) =>
+            static (command, addressDefinition) =>
             {
-                command.Parameters.AddWithValue("$name", addressObject.Name);
-                command.Parameters.AddWithValue("$value", addressObject.Value);
+                command.Parameters.AddWithValue("$name", addressDefinition.Name);
+                command.Parameters.AddWithValue("$value", addressDefinition.Value);
             })
     {
     }
 
-    internal SqliteAddressObjectRepository(SqliteWriteTransaction writeTransaction)
+    internal SqliteAddressDefinitionRepository(SqliteWriteTransaction writeTransaction)
         : base(
             writeTransaction,
             TableName,
             InitializeCommandText,
             SelectAllCommandText,
             InsertCommandText,
-            static reader => new AddressObject
+            static reader => new AddressDefinition
             {
                 Name = reader.GetString(0),
                 Value = reader.GetString(1)
             },
-            static (command, addressObject) =>
+            static (command, addressDefinition) =>
             {
-                command.Parameters.AddWithValue("$name", addressObject.Name);
-                command.Parameters.AddWithValue("$value", addressObject.Value);
+                command.Parameters.AddWithValue("$name", addressDefinition.Name);
+                command.Parameters.AddWithValue("$value", addressDefinition.Value);
             })
     {
     }
@@ -75,7 +75,7 @@ public sealed class SqliteAddressObjectRepository : SqliteReadWriteRepositoryBas
         SqliteRepositoryHelper.EnsureTableAvailable(
             DatabasePath,
             TableName,
-            "Address objects are unavailable. Run import before lookup.");
+            "Address definitions are unavailable. Run import before lookup.");
     }
 
 }

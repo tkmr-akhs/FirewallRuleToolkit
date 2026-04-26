@@ -3,19 +3,19 @@
 namespace FirewallRuleToolkit.Infra.Csv.PaloAlto;
 
 /// <summary>
-/// PaloAlto 機器用 アドレス オブジェクト CSV を読み取ります。
+/// PaloAlto 機器用アドレス定義 CSV を読み取ります。
 /// </summary>
-public sealed class PaloAltoAddressObjectCsvReader : IReadRepository<AddressObject>
+public sealed class PaloAltoAddressDefinitionCsvReader : IReadRepository<AddressDefinition>
 {
     private readonly string path;
     private readonly CsvOptions options;
 
     /// <summary>
-    /// PaloAlto 機器用 アドレス オブジェクト CSV を読み取りするクラスのコンストラクターです。
+    /// PaloAlto 機器用アドレス定義 CSV を読み取りするクラスのコンストラクターです。
     /// </summary>
     /// <param name="path">CSV ファイル パス。</param>
     /// <param name="options">CSV オプション。</param>
-    public PaloAltoAddressObjectCsvReader(string path, CsvOptions? options = null)
+    public PaloAltoAddressDefinitionCsvReader(string path, CsvOptions? options = null)
     {
         this.path = path ?? throw new ArgumentNullException(nameof(path));
         this.options = options ?? new CsvOptions();
@@ -28,38 +28,38 @@ public sealed class PaloAltoAddressObjectCsvReader : IReadRepository<AddressObje
     {
         if (!File.Exists(path))
         {
-            throw new RepositoryUnavailableException($"Address objects csv is unavailable. path: {path}");
+            throw new RepositoryUnavailableException($"Address definitions csv is unavailable. path: {path}");
         }
     }
 
     /// <summary>
-    /// アドレス オブジェクトを列挙します。
+    /// 名前付きアドレス定義を列挙します。
     /// </summary>
-    /// <returns>アドレス オブジェクトの列挙。</returns>
-    public IEnumerable<AddressObject> GetAll()
+    /// <returns>名前付きアドレス定義の列挙。</returns>
+    public IEnumerable<AddressDefinition> GetAll()
     {
         foreach (var row in CsvRepositoryHelper.ReadRowsWithRecordNumbers(path, options))
         {
-            AddressObject addressObject;
+            AddressDefinition addressDefinition;
             try
             {
-                addressObject = CreateAddressObject(row.Values);
+                addressDefinition = CreateAddressDefinition(row.Values);
             }
             catch (Exception ex) when (CsvRepositoryHelper.IsReadExceptionCause(ex))
             {
                 throw CsvRepositoryHelper.CreateReadException(path, row.RecordNumber, ex);
             }
 
-            yield return addressObject;
+            yield return addressDefinition;
         }
     }
 
-    private static AddressObject CreateAddressObject(IReadOnlyDictionary<string, string> row)
+    private static AddressDefinition CreateAddressDefinition(IReadOnlyDictionary<string, string> row)
     {
-        return new AddressObject
+        return new AddressDefinition
         {
-            Name = CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoAddressObjects.NameHeader),
-            Value = NormalizeAddressValue(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoAddressObjects.AddressHeader))
+            Name = CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoAddressDefinitions.NameHeader),
+            Value = NormalizeAddressValue(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoAddressDefinitions.AddressHeader))
         };
     }
 

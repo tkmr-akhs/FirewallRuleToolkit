@@ -6,9 +6,9 @@
 public sealed class AddressReferenceResolver
 {
     /// <summary>
-    /// アドレス オブジェクト参照の lookup です。
+    /// 名前付きアドレス定義の lookup です。
     /// </summary>
-    private readonly ILookupRepository<string> addressObjectLookup;
+    private readonly ILookupRepository<string> addressDefinitionLookup;
 
     /// <summary>
     /// アドレス グループ参照の lookup です。
@@ -18,13 +18,13 @@ public sealed class AddressReferenceResolver
     /// <summary>
     /// アドレス名を解決するクラスのコンストラクターです。
     /// </summary>
-    /// <param name="addressObjectLookup">アドレス オブジェクト lookup。</param>
+    /// <param name="addressDefinitionLookup">名前付きアドレス定義 lookup。</param>
     /// <param name="addressGroupLookup">アドレス グループ lookup。</param>
     public AddressReferenceResolver(
-        ILookupRepository<string> addressObjectLookup,
+        ILookupRepository<string> addressDefinitionLookup,
         ILookupRepository<IReadOnlyList<string>> addressGroupLookup)
     {
-        this.addressObjectLookup = addressObjectLookup ?? throw new ArgumentNullException(nameof(addressObjectLookup));
+        this.addressDefinitionLookup = addressDefinitionLookup ?? throw new ArgumentNullException(nameof(addressDefinitionLookup));
         this.addressGroupLookup = addressGroupLookup ?? throw new ArgumentNullException(nameof(addressGroupLookup));
     }
 
@@ -32,8 +32,8 @@ public sealed class AddressReferenceResolver
     /// 入力値列を解決します。
     /// </summary>
     /// <param name="values">解決対象の値列。</param>
-    /// <returns>解決後のアドレス オブジェクト列。</returns>
-    public IEnumerable<AddressObject> Resolve(IEnumerable<string> values)
+    /// <returns>解決後のアドレス値列。</returns>
+    public IEnumerable<ResolvedAddress> Resolve(IEnumerable<string> values)
     {
         ArgumentNullException.ThrowIfNull(values);
 
@@ -53,18 +53,18 @@ public sealed class AddressReferenceResolver
     /// </summary>
     /// <param name="value">解決対象のアドレス参照。</param>
     /// <param name="visitedGroups">再帰検出済みのアドレス グループ名。</param>
-    /// <returns>解決後のアドレス オブジェクト列。</returns>
-    private IEnumerable<AddressObject> ResolveValue(string value, HashSet<string> visitedGroups)
+    /// <returns>解決後のアドレス値列。</returns>
+    private IEnumerable<ResolvedAddress> ResolveValue(string value, HashSet<string> visitedGroups)
     {
         if (AddressValueParser.TryNormalizeBuiltInValue(value, out var builtInValue))
         {
-            yield return CreateResolvedAddressObject(builtInValue);
+            yield return CreateResolvedAddress(builtInValue);
             yield break;
         }
 
-        if (addressObjectLookup.TryGetByName(value, out var objectValue))
+        if (addressDefinitionLookup.TryGetByName(value, out var definitionValue))
         {
-            yield return CreateResolvedAddressObject(objectValue);
+            yield return CreateResolvedAddress(definitionValue);
             yield break;
         }
 
@@ -93,19 +93,18 @@ public sealed class AddressReferenceResolver
             yield break;
         }
 
-        yield return CreateResolvedAddressObject(AddressValueParser.NormalizeObjectValue(value));
+        yield return CreateResolvedAddress(AddressValueParser.NormalizeResolvedValue(value));
     }
 
     /// <summary>
-    /// 解決済みのアドレス値から匿名アドレス オブジェクトを作成します。
+    /// 解決済みのアドレス値から匿名アドレス値表現を作成します。
     /// </summary>
     /// <param name="value">解決済みのアドレス値。</param>
-    /// <returns>匿名アドレス オブジェクト。</returns>
-    private static AddressObject CreateResolvedAddressObject(string value)
+    /// <returns>匿名アドレス値表現。</returns>
+    private static ResolvedAddress CreateResolvedAddress(string value)
     {
-        return new AddressObject
+        return new ResolvedAddress
         {
-            Name = string.Empty,
             Value = value
         };
     }

@@ -1,6 +1,4 @@
-﻿using FirewallRuleToolkit.Domain;
-using FirewallRuleToolkit.Domain.Entities;
-using FirewallRuleToolkit.Domain.Ports;
+﻿using FirewallRuleToolkit.Domain.Ports;
 using FirewallRuleToolkit.Domain.Services;
 
 namespace FirewallRuleToolkit.Tests.Domain;
@@ -11,7 +9,7 @@ public sealed class AddressReferenceResolverTests
     public void Resolve_ObjectAndGroup_ExpandsNormalizedStoreValues()
     {
         var resolver = new AddressReferenceResolver(
-            new StubAddressObjectStore(new Dictionary<string, string>(StringComparer.Ordinal)
+            new StubAddressDefinitionStore(new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["web"] = "192.168.0.10/32",
                 ["range"] = "192.168.0.20-192.168.0.21"
@@ -24,53 +22,49 @@ public sealed class AddressReferenceResolverTests
         var resolved = resolver.Resolve(["servers", "10.0.0.0/24"]).ToArray();
 
         Assert.Equal(["192.168.0.10/32", "192.168.0.20-192.168.0.21", "10.0.0.0/24"], resolved.Select(item => item.Value));
-        Assert.All(resolved, item => Assert.Equal(string.Empty, item.Name));
     }
 
     [Fact]
     public void Resolve_InlineHostAddress_NormalizesToSlash32()
     {
         var resolver = new AddressReferenceResolver(
-            new StubAddressObjectStore(new Dictionary<string, string>(StringComparer.Ordinal)),
+            new StubAddressDefinitionStore(new Dictionary<string, string>(StringComparer.Ordinal)),
             new StubAddressGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
 
         var resolved = resolver.Resolve(["192.168.0.10"]).Single();
 
         Assert.Equal("192.168.0.10/32", resolved.Value);
-        Assert.Equal(string.Empty, resolved.Name);
     }
 
     [Fact]
     public void Resolve_AnyAddress_UsesLowercaseBuiltInName()
     {
         var resolver = new AddressReferenceResolver(
-            new StubAddressObjectStore(new Dictionary<string, string>(StringComparer.Ordinal)),
+            new StubAddressDefinitionStore(new Dictionary<string, string>(StringComparer.Ordinal)),
             new StubAddressGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
 
         var resolved = resolver.Resolve(["any"]).Single();
 
         Assert.Equal("0.0.0.0/0", resolved.Value);
-        Assert.Equal(string.Empty, resolved.Name);
     }
 
     [Fact]
     public void Resolve_AnyAddress_WhenCaseDiffers_DoesNotUseBuiltInName()
     {
         var resolver = new AddressReferenceResolver(
-            new StubAddressObjectStore(new Dictionary<string, string>(StringComparer.Ordinal)),
+            new StubAddressDefinitionStore(new Dictionary<string, string>(StringComparer.Ordinal)),
             new StubAddressGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
 
         var resolved = resolver.Resolve(["ANY"]).Single();
 
         Assert.Equal("ANY", resolved.Value);
-        Assert.Equal(string.Empty, resolved.Name);
     }
 
     [Fact]
     public void Resolve_ObjectAndGroupNames_AreCaseSensitive()
     {
         var resolver = new AddressReferenceResolver(
-            new StubAddressObjectStore(new Dictionary<string, string>(StringComparer.Ordinal)
+            new StubAddressDefinitionStore(new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["Web"] = "192.168.0.10/32"
             }),
@@ -88,7 +82,7 @@ public sealed class AddressReferenceResolverTests
     public void Resolve_RecursiveGroup_ThrowsInvalidOperationException()
     {
         var resolver = new AddressReferenceResolver(
-            new StubAddressObjectStore(new Dictionary<string, string>(StringComparer.Ordinal)),
+            new StubAddressDefinitionStore(new Dictionary<string, string>(StringComparer.Ordinal)),
             new StubAddressGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
             {
                 ["loop"] = ["loop"]
@@ -101,7 +95,7 @@ public sealed class AddressReferenceResolverTests
     public void Resolve_GroupNamesDifferingOnlyByCase_DoesNotTreatAsRecursion()
     {
         var resolver = new AddressReferenceResolver(
-            new StubAddressObjectStore(new Dictionary<string, string>(StringComparer.Ordinal)
+            new StubAddressDefinitionStore(new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["host"] = "192.168.0.10/32"
             }),
@@ -116,11 +110,11 @@ public sealed class AddressReferenceResolverTests
         Assert.Equal("192.168.0.10/32", resolved.Value);
     }
 
-    private sealed class StubAddressObjectStore : ILookupRepository<string>
+    private sealed class StubAddressDefinitionStore : ILookupRepository<string>
     {
         private readonly IReadOnlyDictionary<string, string> values;
 
-        public StubAddressObjectStore(IReadOnlyDictionary<string, string> values)
+        public StubAddressDefinitionStore(IReadOnlyDictionary<string, string> values)
         {
             this.values = values;
         }

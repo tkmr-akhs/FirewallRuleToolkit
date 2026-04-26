@@ -218,7 +218,7 @@ public sealed class CsvMergedSecurityPolicyWriterTests
                     new AddressGroupMembership { GroupName = "src-group", MemberName = "host-a" },
                     new AddressGroupMembership { GroupName = "src-group", MemberName = "host-b" }
                 ]),
-                new StubAddressObjectLookup(new Dictionary<string, string>(StringComparer.Ordinal)
+                new StubAddressDefinitionLookup(new Dictionary<string, string>(StringComparer.Ordinal)
                 {
                     ["host-a"] = "192.168.1.10/32",
                     ["host-b"] = "192.168.1.11/32"
@@ -291,7 +291,7 @@ public sealed class CsvMergedSecurityPolicyWriterTests
                     new AddressGroupMembership { GroupName = "dst-group", MemberName = "host-a" },
                     new AddressGroupMembership { GroupName = "dst-group", MemberName = "host-b" }
                 ]),
-                new StubAddressObjectLookup(new Dictionary<string, string>(StringComparer.Ordinal)
+                new StubAddressDefinitionLookup(new Dictionary<string, string>(StringComparer.Ordinal)
                 {
                     ["host-a"] = "10.0.0.10/32",
                     ["host-b"] = "10.0.0.11/32"
@@ -397,11 +397,11 @@ public sealed class CsvMergedSecurityPolicyWriterTests
         }
     }
 
-    private sealed class StubAddressObjectLookup : ILookupRepository<string>
+    private sealed class StubAddressDefinitionLookup : ILookupRepository<string>
     {
         private readonly IReadOnlyDictionary<string, string> values;
 
-        public StubAddressObjectLookup(IReadOnlyDictionary<string, string> values)
+        public StubAddressDefinitionLookup(IReadOnlyDictionary<string, string> values)
         {
             this.values = values;
         }

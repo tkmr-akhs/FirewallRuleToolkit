@@ -1,12 +1,12 @@
 ﻿namespace FirewallRuleToolkit.Domain.Entities;
 
 /// <summary>
-/// 単一のサービス オブジェクトを保持します。
+/// import 済みの名前付きサービス定義を保持します。
 /// </summary>
-public sealed class ServiceObject
+public sealed class ServiceDefinition
 {
     /// <summary>
-    /// オブジェクト名を取得します。
+    /// サービス定義名を取得します。
     /// </summary>
     public required string Name { get; init; } = string.Empty;
 

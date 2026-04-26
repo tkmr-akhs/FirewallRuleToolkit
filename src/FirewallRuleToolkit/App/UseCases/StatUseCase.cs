@@ -9,18 +9,18 @@ internal static class StatUseCase
 {
     public readonly record struct ImportedTableCounts(
         int SecurityPolicies,
-        int AddressObjects,
+        int AddressDefinitions,
         int AddressGroupMembers,
-        int ServiceObjects,
+        int ServiceDefinitions,
         int ServiceGroupMembers);
 
     /// <summary>
     /// データベースの統計情報を出力します。
     /// </summary>
     /// <param name="securityPolicies">import 済みセキュリティ ポリシー件数 repository。</param>
-    /// <param name="addressObjects">アドレス オブジェクト件数 repository。</param>
+    /// <param name="addressDefinitions">名前付きアドレス定義件数 repository。</param>
     /// <param name="addressGroups">アドレス グループ件数 repository。</param>
-    /// <param name="serviceObjects">サービス オブジェクト件数 repository。</param>
+    /// <param name="serviceDefinitions">名前付きサービス定義件数 repository。</param>
     /// <param name="serviceGroups">サービス グループ件数 repository。</param>
     /// <param name="atomicPolicies">Atomic ポリシー件数 repository。</param>
     /// <param name="mergedPolicies">Merged ポリシー件数 repository。</param>
@@ -28,18 +28,18 @@ internal static class StatUseCase
     /// <returns>終了コード。</returns>
     public static int Execute(
         IItemCountRepository securityPolicies,
-        IItemCountRepository addressObjects,
+        IItemCountRepository addressDefinitions,
         IItemCountRepository addressGroups,
-        IItemCountRepository serviceObjects,
+        IItemCountRepository serviceDefinitions,
         IItemCountRepository serviceGroups,
         IItemCountRepository atomicPolicies,
         IItemCountRepository mergedPolicies,
         Action<string> writeLine)
     {
         ArgumentNullException.ThrowIfNull(securityPolicies);
-        ArgumentNullException.ThrowIfNull(addressObjects);
+        ArgumentNullException.ThrowIfNull(addressDefinitions);
         ArgumentNullException.ThrowIfNull(addressGroups);
-        ArgumentNullException.ThrowIfNull(serviceObjects);
+        ArgumentNullException.ThrowIfNull(serviceDefinitions);
         ArgumentNullException.ThrowIfNull(serviceGroups);
         ArgumentNullException.ThrowIfNull(atomicPolicies);
         ArgumentNullException.ThrowIfNull(mergedPolicies);
@@ -51,16 +51,16 @@ internal static class StatUseCase
         {
             var imported = GetImportedCounts(
                 securityPolicies,
-                addressObjects,
+                addressDefinitions,
                 addressGroups,
-                serviceObjects,
+                serviceDefinitions,
                 serviceGroups);
 
             writeLine("Import: completed");
             writeLine($"security_policies: {imported.SecurityPolicies}");
-            writeLine($"address_objects: {imported.AddressObjects}");
+            writeLine($"address_objects: {imported.AddressDefinitions}");
             writeLine($"address_group_members: {imported.AddressGroupMembers}");
-            writeLine($"service_objects: {imported.ServiceObjects}");
+            writeLine($"service_objects: {imported.ServiceDefinitions}");
             writeLine($"service_group_members: {imported.ServiceGroupMembers}");
             writeLine(string.Empty);
         }
@@ -99,22 +99,22 @@ internal static class StatUseCase
 
     private static ImportedTableCounts GetImportedCounts(
         IItemCountRepository securityPolicies,
-        IItemCountRepository addressObjects,
+        IItemCountRepository addressDefinitions,
         IItemCountRepository addressGroups,
-        IItemCountRepository serviceObjects,
+        IItemCountRepository serviceDefinitions,
         IItemCountRepository serviceGroups)
     {
         securityPolicies.EnsureAvailable();
-        addressObjects.EnsureAvailable();
+        addressDefinitions.EnsureAvailable();
         addressGroups.EnsureAvailable();
-        serviceObjects.EnsureAvailable();
+        serviceDefinitions.EnsureAvailable();
         serviceGroups.EnsureAvailable();
 
         return new ImportedTableCounts(
             securityPolicies.Count(),
-            addressObjects.Count(),
+            addressDefinitions.Count(),
             addressGroups.Count(),
-            serviceObjects.Count(),
+            serviceDefinitions.Count(),
             serviceGroups.Count());
     }
 

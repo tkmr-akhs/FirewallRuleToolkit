@@ -9,18 +9,18 @@ public sealed class ImportUseCaseTests
     [Fact]
     public void Execute_ImportsInBatches_AndKeepsPolicyReferencesUnresolved()
     {
-        var addressObjectReader = new TestReadRepository<AddressObject>(
+        var addressDefinitionReader = new TestReadRepository<AddressDefinition>(
         [
-            new AddressObject { Name = "src-host", Value = "192.168.0.10/32" },
-            new AddressObject { Name = "dst-host", Value = "10.0.0.10/32" }
+            new AddressDefinition { Name = "src-host", Value = "192.168.0.10/32" },
+            new AddressDefinition { Name = "dst-host", Value = "10.0.0.10/32" }
         ]);
         var addressGroupReader = new TestReadRepository<AddressGroupMembership>(
         [
             new AddressGroupMembership { GroupName = "src-group", MemberName = "src-host" }
         ]);
-        var serviceObjectReader = new TestReadRepository<ServiceObject>(
+        var serviceDefinitionReader = new TestReadRepository<ServiceDefinition>(
         [
-            new ServiceObject
+            new ServiceDefinition
             {
                 Name = "svc-https",
                 Protocol = "6",
@@ -52,23 +52,23 @@ public sealed class ImportUseCaseTests
         var writeSession = new TestWriteRepositorySession();
 
         var exitCode = ImportUseCase.Execute(
-            addressObjectReader,
+            addressDefinitionReader,
             addressGroupReader,
-            serviceObjectReader,
+            serviceDefinitionReader,
             serviceGroupReader,
             securityPolicyReader,
             writeSession);
 
         Assert.Equal(0, exitCode);
 
-        Assert.Equal([2], writeSession.AddressObjectsRepository.AppendBatchSizes);
+        Assert.Equal([2], writeSession.AddressDefinitionsRepository.AppendBatchSizes);
         Assert.Equal([1], writeSession.AddressGroupsRepository.AppendBatchSizes);
-        Assert.Equal([1], writeSession.ServiceObjectsRepository.AppendBatchSizes);
+        Assert.Equal([1], writeSession.ServiceDefinitionsRepository.AppendBatchSizes);
         Assert.Equal([1], writeSession.ServiceGroupsRepository.AppendBatchSizes);
         Assert.Equal([1], writeSession.ImportedSecurityPoliciesRepository.AppendBatchSizes);
-        Assert.Equal(1, writeSession.AddressObjectsRepository.CompleteCount);
+        Assert.Equal(1, writeSession.AddressDefinitionsRepository.CompleteCount);
         Assert.Equal(1, writeSession.AddressGroupsRepository.CompleteCount);
-        Assert.Equal(1, writeSession.ServiceObjectsRepository.CompleteCount);
+        Assert.Equal(1, writeSession.ServiceDefinitionsRepository.CompleteCount);
         Assert.Equal(1, writeSession.ServiceGroupsRepository.CompleteCount);
         Assert.Equal(1, writeSession.ImportedSecurityPoliciesRepository.CompleteCount);
         Assert.Equal(0, writeSession.ToolMetadataRepository.ClearCount);

@@ -6,38 +6,38 @@
 internal static class ImportUseCase
 {
     /// <summary>
-    /// CSV からデータベースへ各種オブジェクトとポリシーを読み込みます。
+    /// CSV からデータベースへ各種定義とポリシーを読み込みます。
     /// </summary>
     public static int Execute(
-        IReadRepository<AddressObject> addressObjectReader,
+        IReadRepository<AddressDefinition> addressDefinitionReader,
         IReadRepository<AddressGroupMembership> addressGroupReader,
-        IReadRepository<ServiceObject> serviceObjectReader,
+        IReadRepository<ServiceDefinition> serviceDefinitionReader,
         IReadRepository<ServiceGroupMembership> serviceGroupReader,
         IReadRepository<ImportedSecurityPolicy> securityPolicyReader,
         IWriteRepositorySession writeSession)
     {
-        ArgumentNullException.ThrowIfNull(addressObjectReader);
+        ArgumentNullException.ThrowIfNull(addressDefinitionReader);
         ArgumentNullException.ThrowIfNull(addressGroupReader);
-        ArgumentNullException.ThrowIfNull(serviceObjectReader);
+        ArgumentNullException.ThrowIfNull(serviceDefinitionReader);
         ArgumentNullException.ThrowIfNull(serviceGroupReader);
         ArgumentNullException.ThrowIfNull(securityPolicyReader);
         ArgumentNullException.ThrowIfNull(writeSession);
 
-        addressObjectReader.EnsureAvailable();
+        addressDefinitionReader.EnsureAvailable();
         addressGroupReader.EnsureAvailable();
-        serviceObjectReader.EnsureAvailable();
+        serviceDefinitionReader.EnsureAvailable();
         serviceGroupReader.EnsureAvailable();
         securityPolicyReader.EnsureAvailable();
 
-        writeSession.AddressObjects.ReplaceAll(addressObjectReader.GetAll());
+        writeSession.AddressDefinitions.ReplaceAll(addressDefinitionReader.GetAll());
         writeSession.AddressGroups.ReplaceAll(addressGroupReader.GetAll());
-        writeSession.ServiceObjects.ReplaceAll(serviceObjectReader.GetAll());
+        writeSession.ServiceDefinitions.ReplaceAll(serviceDefinitionReader.GetAll());
         writeSession.ServiceGroups.ReplaceAll(serviceGroupReader.GetAll());
         writeSession.ImportedSecurityPolicies.ReplaceAll(securityPolicyReader.GetAll());
 
-        writeSession.AddressObjects.Complete();
+        writeSession.AddressDefinitions.Complete();
         writeSession.AddressGroups.Complete();
-        writeSession.ServiceObjects.Complete();
+        writeSession.ServiceDefinitions.Complete();
         writeSession.ServiceGroups.Complete();
         writeSession.ImportedSecurityPolicies.Complete();
         writeSession.Commit();

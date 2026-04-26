@@ -11,7 +11,7 @@ public sealed class ServiceReferenceResolverTests
     public void Resolve_ObjectAndGroup_ExpandsNormalizedStoreValues()
     {
         var resolver = new ServiceReferenceResolver(
-            new StubServiceObjectStore(new Dictionary<string, ServiceObject>(StringComparer.Ordinal)
+            new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)
             {
                 ["svc-web"] = new()
                 {
@@ -66,7 +66,7 @@ public sealed class ServiceReferenceResolverTests
     public void Resolve_DirectService_WithExplicitSourceAndDestinationPorts_NormalizesValues()
     {
         var resolver = new ServiceReferenceResolver(
-            new StubServiceObjectStore(new Dictionary<string, ServiceObject>(StringComparer.Ordinal)),
+            new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)),
             new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
 
         var resolved = resolver.Resolve(["TCP any 80-90"]).Single();
@@ -75,14 +75,14 @@ public sealed class ServiceReferenceResolverTests
         Assert.Equal("1-65535", resolved.SourcePort);
         Assert.Equal("80-90", resolved.DestinationPort);
         Assert.Null(resolved.Kind);
-        Assert.NotEmpty(ServiceObjectExpander.Parse(resolved));
+        Assert.NotEmpty(ResolvedServiceExpander.Parse(resolved));
     }
 
     [Fact]
     public void Resolve_DirectService_WhenSourcePortIsOmitted_FallsBackToKind()
     {
         var resolver = new ServiceReferenceResolver(
-            new StubServiceObjectStore(new Dictionary<string, ServiceObject>(StringComparer.Ordinal)),
+            new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)),
             new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
 
         var resolved = resolver.Resolve(["tcp 80"]).Single();
@@ -97,7 +97,7 @@ public sealed class ServiceReferenceResolverTests
     public void Resolve_DirectService_WhenThreePartValueIsInvalid_FallsBackToKind()
     {
         var resolver = new ServiceReferenceResolver(
-            new StubServiceObjectStore(new Dictionary<string, ServiceObject>(StringComparer.Ordinal)),
+            new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)),
             new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
 
         var resolved = resolver.Resolve(["tcp hoge 80"]).Single();
@@ -112,7 +112,7 @@ public sealed class ServiceReferenceResolverTests
     public void Resolve_DirectService_WhenAnyCaseDiffers_FallsBackToKind()
     {
         var resolver = new ServiceReferenceResolver(
-            new StubServiceObjectStore(new Dictionary<string, ServiceObject>(StringComparer.Ordinal)),
+            new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)),
             new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
 
         var resolved = resolver.Resolve(["TCP ANY 80"]).Single();
@@ -127,7 +127,7 @@ public sealed class ServiceReferenceResolverTests
     public void Resolve_AnyService_UsesLowercaseBuiltInName()
     {
         var resolver = new ServiceReferenceResolver(
-            new StubServiceObjectStore(new Dictionary<string, ServiceObject>(StringComparer.Ordinal)),
+            new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)),
             new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
 
         var resolved = resolver.Resolve(["any"]).Single();
@@ -142,7 +142,7 @@ public sealed class ServiceReferenceResolverTests
     public void Resolve_AnyService_WhenCaseDiffers_DoesNotUseBuiltInName()
     {
         var resolver = new ServiceReferenceResolver(
-            new StubServiceObjectStore(new Dictionary<string, ServiceObject>(StringComparer.Ordinal)),
+            new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)),
             new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
 
         var resolved = resolver.Resolve(["ANY"]).Single();
@@ -154,10 +154,10 @@ public sealed class ServiceReferenceResolverTests
     }
 
     [Fact]
-    public void Resolve_AnyService_WhenServiceObjectNamedAnyExists_UsesBuiltInAny()
+    public void Resolve_AnyService_WhenServiceDefinitionNamedAnyExists_UsesBuiltInAny()
     {
         var resolver = new ServiceReferenceResolver(
-            new StubServiceObjectStore(new Dictionary<string, ServiceObject>(StringComparer.Ordinal)
+            new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)
             {
                 ["any"] = new()
                 {
@@ -182,7 +182,7 @@ public sealed class ServiceReferenceResolverTests
     public void Resolve_AnyService_WhenServiceGroupNamedAnyExists_UsesBuiltInAny()
     {
         var resolver = new ServiceReferenceResolver(
-            new StubServiceObjectStore(new Dictionary<string, ServiceObject>(StringComparer.Ordinal)
+            new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)
             {
                 ["svc-web"] = new()
                 {
@@ -207,10 +207,10 @@ public sealed class ServiceReferenceResolverTests
     }
 
     [Fact]
-    public void Resolve_ServiceObject_WithAnyValues_NormalizesForExpansion()
+    public void Resolve_ServiceDefinition_WithAnyValues_NormalizesForExpansion()
     {
         var resolver = new ServiceReferenceResolver(
-            new StubServiceObjectStore(new Dictionary<string, ServiceObject>(StringComparer.Ordinal)
+            new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)
             {
                 ["svc-any"] = new()
                 {
@@ -228,14 +228,14 @@ public sealed class ServiceReferenceResolverTests
         Assert.Equal("0-254", resolved.Protocol);
         Assert.Equal("1-65535", resolved.SourcePort);
         Assert.Equal("1-65535", resolved.DestinationPort);
-        Assert.NotEmpty(ServiceObjectExpander.Parse(resolved));
+        Assert.NotEmpty(ResolvedServiceExpander.Parse(resolved));
     }
 
     [Fact]
-    public void Resolve_ServiceObject_WithProtocolRangesEnding255_NormalizesRangeEndTo254()
+    public void Resolve_ServiceDefinition_WithProtocolRangesEnding255_NormalizesRangeEndTo254()
     {
         var resolver = new ServiceReferenceResolver(
-            new StubServiceObjectStore(new Dictionary<string, ServiceObject>(StringComparer.Ordinal)
+            new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)
             {
                 ["svc-protocol-any"] = new()
                 {
@@ -253,14 +253,14 @@ public sealed class ServiceReferenceResolverTests
         Assert.Equal("0-254,100-254,6", resolved.Protocol);
         Assert.Equal("1-65535", resolved.SourcePort);
         Assert.Equal("1-65535", resolved.DestinationPort);
-        Assert.NotEmpty(ServiceObjectExpander.Parse(resolved));
+        Assert.NotEmpty(ResolvedServiceExpander.Parse(resolved));
     }
 
     [Fact]
-    public void Resolve_ServiceObject_WithDelimitedPortRangesStarting0_NormalizesEachRangeStartTo1()
+    public void Resolve_ServiceDefinition_WithDelimitedPortRangesStarting0_NormalizesEachRangeStartTo1()
     {
         var resolver = new ServiceReferenceResolver(
-            new StubServiceObjectStore(new Dictionary<string, ServiceObject>(StringComparer.Ordinal)
+            new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)
             {
                 ["svc-port-any"] = new()
                 {
@@ -278,14 +278,14 @@ public sealed class ServiceReferenceResolverTests
         Assert.Equal("6", resolved.Protocol);
         Assert.Equal("80,1-65535,254", resolved.SourcePort);
         Assert.Equal("1-1023,443", resolved.DestinationPort);
-        Assert.NotEmpty(ServiceObjectExpander.Parse(resolved));
+        Assert.NotEmpty(ResolvedServiceExpander.Parse(resolved));
     }
 
     [Fact]
-    public void Resolve_ServiceObject_UsesNormalizedStoreValuesAsIs()
+    public void Resolve_ServiceDefinition_UsesNormalizedStoreValuesAsIs()
     {
         var resolver = new ServiceReferenceResolver(
-            new StubServiceObjectStore(new Dictionary<string, ServiceObject>(StringComparer.Ordinal)
+            new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)
             {
                 ["svc-range"] = new()
                 {
@@ -307,10 +307,10 @@ public sealed class ServiceReferenceResolverTests
     }
 
     [Fact]
-    public void Resolve_ServiceObject_WithCompositePortExpression_PreservesText()
+    public void Resolve_ServiceDefinition_WithCompositePortExpression_PreservesText()
     {
         var resolver = new ServiceReferenceResolver(
-            new StubServiceObjectStore(new Dictionary<string, ServiceObject>(StringComparer.Ordinal)
+            new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)
             {
                 ["svc-composite"] = new()
                 {
@@ -335,7 +335,7 @@ public sealed class ServiceReferenceResolverTests
     public void Resolve_ObjectAndGroupNames_AreCaseSensitive()
     {
         var resolver = new ServiceReferenceResolver(
-            new StubServiceObjectStore(new Dictionary<string, ServiceObject>(StringComparer.Ordinal)
+            new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)
             {
                 ["SvcWeb"] = new()
                 {
@@ -366,7 +366,7 @@ public sealed class ServiceReferenceResolverTests
     public void Resolve_RecursiveGroup_ThrowsInvalidOperationException()
     {
         var resolver = new ServiceReferenceResolver(
-            new StubServiceObjectStore(new Dictionary<string, ServiceObject>(StringComparer.Ordinal)),
+            new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)),
             new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
             {
                 ["loop"] = ["loop"]
@@ -379,7 +379,7 @@ public sealed class ServiceReferenceResolverTests
     public void Resolve_GroupNamesDifferingOnlyByCase_DoesNotTreatAsRecursion()
     {
         var resolver = new ServiceReferenceResolver(
-            new StubServiceObjectStore(new Dictionary<string, ServiceObject>(StringComparer.Ordinal)
+            new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)
             {
                 ["svc-web"] = new()
                 {
@@ -404,18 +404,18 @@ public sealed class ServiceReferenceResolverTests
         Assert.Null(resolved.Kind);
     }
 
-    private sealed class StubServiceObjectStore : ILookupRepository<ServiceObject>
+    private sealed class StubServiceDefinitionStore : ILookupRepository<ServiceDefinition>
     {
-        private readonly IReadOnlyDictionary<string, ServiceObject> values;
+        private readonly IReadOnlyDictionary<string, ServiceDefinition> values;
 
-        public StubServiceObjectStore(IReadOnlyDictionary<string, ServiceObject> values)
+        public StubServiceDefinitionStore(IReadOnlyDictionary<string, ServiceDefinition> values)
         {
             this.values = values;
         }
 
-        public bool TryGetByName(string name, out ServiceObject serviceObject)
+        public bool TryGetByName(string name, out ServiceDefinition serviceDefinition)
         {
-            return values.TryGetValue(name, out serviceObject!);
+            return values.TryGetValue(name, out serviceDefinition!);
         }
 
         public void EnsureAvailable()

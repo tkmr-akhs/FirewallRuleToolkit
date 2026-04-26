@@ -78,11 +78,11 @@ internal sealed class TestItemCountRepository(int count, bool isAvailable = true
 
 internal sealed class TestWriteRepositorySession : IWriteRepositorySession
 {
-    public TestAddressObjectRepository AddressObjectsRepository { get; } = new();
+    public TestAddressDefinitionRepository AddressDefinitionsRepository { get; } = new();
 
     public TestAddressGroupRepository AddressGroupsRepository { get; } = new();
 
-    public TestServiceObjectRepository ServiceObjectsRepository { get; } = new();
+    public TestServiceDefinitionRepository ServiceDefinitionsRepository { get; } = new();
 
     public TestServiceGroupRepository ServiceGroupsRepository { get; } = new();
 
@@ -96,11 +96,11 @@ internal sealed class TestWriteRepositorySession : IWriteRepositorySession
 
     public int CommitCount { get; private set; }
 
-    public IReadWriteRepository<AddressObject> AddressObjects => AddressObjectsRepository;
+    public IReadWriteRepository<AddressDefinition> AddressDefinitions => AddressDefinitionsRepository;
 
     public IReadWriteRepository<AddressGroupMembership> AddressGroups => AddressGroupsRepository;
 
-    public IReadWriteRepository<ServiceObject> ServiceObjects => ServiceObjectsRepository;
+    public IReadWriteRepository<ServiceDefinition> ServiceDefinitions => ServiceDefinitionsRepository;
 
     public IReadWriteRepository<ServiceGroupMembership> ServiceGroups => ServiceGroupsRepository;
 
@@ -171,7 +171,7 @@ internal class TestReadWriteRepository<T> : IReadWriteRepository<T>
     }
 }
 
-internal sealed class TestAddressObjectRepository : TestReadWriteRepository<AddressObject>
+internal sealed class TestAddressDefinitionRepository : TestReadWriteRepository<AddressDefinition>
 {
 }
 
@@ -179,7 +179,7 @@ internal sealed class TestAddressGroupRepository : TestReadWriteRepository<Addre
 {
 }
 
-internal sealed class TestServiceObjectRepository : TestReadWriteRepository<ServiceObject>
+internal sealed class TestServiceDefinitionRepository : TestReadWriteRepository<ServiceDefinition>
 {
 }
 

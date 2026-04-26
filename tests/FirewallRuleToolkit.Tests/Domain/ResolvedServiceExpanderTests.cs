@@ -1,18 +1,17 @@
-﻿using FirewallRuleToolkit.Domain.Entities;
+﻿using FirewallRuleToolkit.Domain.ValueObjects;
 using FirewallRuleToolkit.Domain.Services;
 
 namespace FirewallRuleToolkit.Tests.Domain;
 
-public sealed class ServiceObjectExpanderTests
+public sealed class ResolvedServiceExpanderTests
 {
     [Fact]
     public void Expand_WhenRangesAreBelowThreshold_SplitsEachAxis()
     {
-        var expanded = ServiceObjectExpander.Expand(
+        var expanded = ResolvedServiceExpander.Expand(
             [
-                new ServiceObject
+                new ResolvedService
                 {
-                    Name = "svc",
                     Protocol = "6-7",
                     SourcePort = "1000-1001",
                     DestinationPort = "80",

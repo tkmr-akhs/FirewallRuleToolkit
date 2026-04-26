@@ -1,18 +1,17 @@
-﻿using FirewallRuleToolkit.Domain.Entities;
+﻿using FirewallRuleToolkit.Domain.ValueObjects;
 using FirewallRuleToolkit.Domain.Services;
 
 namespace FirewallRuleToolkit.Tests.Domain;
 
-public sealed class AddressObjectExpanderTests
+public sealed class ResolvedAddressExpanderTests
 {
     [Fact]
     public void Expand_WhenRangeIsBelowThreshold_SplitsIntoSingletons()
     {
-        var expanded = AddressObjectExpander.Expand(
+        var expanded = ResolvedAddressExpander.Expand(
             [
-                new AddressObject
+                new ResolvedAddress
                 {
-                    Name = "src-range",
                     Value = "192.168.1.10-192.168.1.12"
                 }
             ],
@@ -40,11 +39,10 @@ public sealed class AddressObjectExpanderTests
     [Fact]
     public void Expand_WhenCidrIsBelowThreshold_DoesNotSplitIntoSingletons()
     {
-        var expanded = AddressObjectExpander.Expand(
+        var expanded = ResolvedAddressExpander.Expand(
             [
-                new AddressObject
+                new ResolvedAddress
                 {
-                    Name = "src-cidr",
                     Value = "192.168.1.8/30"
                 }
             ],

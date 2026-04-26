@@ -1,7 +1,7 @@
 ﻿namespace FirewallRuleToolkit.Domain.Services;
 
 /// <summary>
-/// サービス文字列表現とサービス オブジェクトを <see cref="ServiceValue"/> へ変換できる形へ解釈します。
+/// サービス文字列表現と名前付きサービス定義を <see cref="ServiceValue"/> へ変換できる形へ解釈します。
 /// </summary>
 public static class ServiceValueParser
 {
@@ -29,8 +29,8 @@ public static class ServiceValueParser
     /// リポジトリで解決できなかったサービス参照を組み込み指定、直指定、または Kind 指定へ変換します。
     /// </summary>
     /// <param name="value">変換対象のサービス参照。</param>
-    /// <returns>変換したサービス オブジェクト。</returns>
-    public static ServiceObject ParseObject(string value)
+    /// <returns>変換した解決済みサービス定義。</returns>
+    public static ResolvedService ParseReference(string value)
     {
         var trimmed = value.Trim();
         if (string.IsNullOrWhiteSpace(trimmed))
@@ -43,54 +43,52 @@ public static class ServiceValueParser
             return builtInValue;
         }
 
-        if (TryCreateDirectServiceObject(trimmed, out var directServiceObject))
+        if (TryCreateDirectResolvedService(trimmed, out var directService))
         {
-            return directServiceObject;
+            return directService;
         }
 
-        return CreateKindServiceObject(trimmed);
+        return CreateKindResolvedService(trimmed);
     }
 
     /// <summary>
-    /// サービス オブジェクト内の any 表現を後続処理が解釈できる数値範囲へ正規化します。
+    /// 名前付きサービス定義内の any 表現を後続処理が解釈できる数値範囲へ正規化します。
     /// </summary>
-    /// <param name="serviceObject">正規化対象のサービス オブジェクト。</param>
-    /// <returns>正規化したサービス オブジェクト。</returns>
-    public static ServiceObject NormalizeObject(ServiceObject serviceObject)
+    /// <param name="serviceDefinition">正規化対象の名前付きサービス定義。</param>
+    /// <returns>正規化した解決済みサービス定義。</returns>
+    public static ResolvedService NormalizeDefinition(ServiceDefinition serviceDefinition)
     {
-        ArgumentNullException.ThrowIfNull(serviceObject);
+        ArgumentNullException.ThrowIfNull(serviceDefinition);
 
-        if (IsKindSentinelObject(serviceObject))
+        if (IsKindSentinelDefinition(serviceDefinition))
         {
-            return new ServiceObject
+            return new ResolvedService
             {
-                Name = serviceObject.Name,
-                Protocol = serviceObject.Protocol,
-                SourcePort = serviceObject.SourcePort,
-                DestinationPort = serviceObject.DestinationPort,
-                Kind = serviceObject.Kind
+                Protocol = serviceDefinition.Protocol,
+                SourcePort = serviceDefinition.SourcePort,
+                DestinationPort = serviceDefinition.DestinationPort,
+                Kind = serviceDefinition.Kind
             };
         }
 
-        return new ServiceObject
+        return new ResolvedService
         {
-            Name = serviceObject.Name,
-            Protocol = NormalizeProtocolValue(serviceObject.Protocol),
-            SourcePort = NormalizePortValue(serviceObject.SourcePort),
-            DestinationPort = NormalizePortValue(serviceObject.DestinationPort),
-            Kind = serviceObject.Kind
+            Protocol = NormalizeProtocolValue(serviceDefinition.Protocol),
+            SourcePort = NormalizePortValue(serviceDefinition.SourcePort),
+            DestinationPort = NormalizePortValue(serviceDefinition.DestinationPort),
+            Kind = serviceDefinition.Kind
         };
     }
 
     /// <summary>
-    /// 組み込みサービス参照をサービス オブジェクトへ正規化します。
+    /// 組み込みサービス参照を解決済みサービス定義へ正規化します。
     /// </summary>
     /// <param name="value">変換対象のサービス参照。</param>
-    /// <param name="normalizedValue">正規化したサービス オブジェクト。</param>
+    /// <param name="normalizedValue">正規化した解決済みサービス定義。</param>
     /// <returns>組み込みサービス参照として解釈できた場合は <see langword="true"/>。</returns>
-    public static bool TryNormalizeBuiltInValue(string value, out ServiceObject normalizedValue)
+    public static bool TryNormalizeBuiltInValue(string value, out ResolvedService normalizedValue)
     {
-        normalizedValue = null!;
+        normalizedValue = default;
         if (string.IsNullOrWhiteSpace(value))
         {
             return false;
@@ -98,7 +96,7 @@ public static class ServiceValueParser
 
         if (value.Trim().Equals("any", StringComparison.Ordinal))
         {
-            normalizedValue = CreateAnyServiceObject();
+            normalizedValue = CreateAnyResolvedService();
             return true;
         }
 
@@ -106,14 +104,12 @@ public static class ServiceValueParser
     }
 
     /// <summary>
-    /// サービス オブジェクト 1 件をサービス範囲列へ変換します。
+    /// 解決済みサービス定義 1 件をサービス範囲列へ変換します。
     /// </summary>
-    /// <param name="service">変換対象のサービス オブジェクト。</param>
+    /// <param name="service">変換対象の解決済みサービス定義。</param>
     /// <returns>変換したサービス範囲列。</returns>
-    public static IEnumerable<ServiceValue> Parse(ServiceObject service)
+    public static IEnumerable<ServiceValue> Parse(ResolvedService service)
     {
-        ArgumentNullException.ThrowIfNull(service);
-
         var protocolRanges = ParseDelimitedRanges(service.Protocol, 0, 255).ToArray();
         var sourcePortRanges = ParseDelimitedRanges(service.SourcePort, 0, 65535).ToArray();
         var destinationPortRanges = ParseDelimitedRanges(service.DestinationPort, 0, 65535).ToArray();
@@ -131,14 +127,14 @@ public static class ServiceValueParser
     }
 
     /// <summary>
-    /// 3 要素の直指定サービス表現をサービス オブジェクトへ変換します。
+    /// 3 要素の直指定サービス表現を解決済みサービス定義へ変換します。
     /// </summary>
     /// <param name="value">直指定候補のサービス表現。</param>
-    /// <param name="serviceObject">変換できたサービス オブジェクト。</param>
+    /// <param name="service">変換できた解決済みサービス定義。</param>
     /// <returns>直指定として解釈できた場合は <see langword="true"/>。</returns>
-    private static bool TryCreateDirectServiceObject(string value, out ServiceObject serviceObject)
+    private static bool TryCreateDirectResolvedService(string value, out ResolvedService service)
     {
-        serviceObject = null!;
+        service = default;
 
         var parts = value.Split(new[] { ' ', '\t' }, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length != 3)
@@ -148,34 +144,32 @@ public static class ServiceValueParser
 
         try
         {
-            serviceObject = new ServiceObject
+            service = new ResolvedService
             {
-                Name = string.Empty,
                 Protocol = NormalizeProtocolValue(parts[0]),
                 SourcePort = NormalizePortValue(parts[1]),
                 DestinationPort = NormalizePortValue(parts[2]),
                 Kind = null
             };
 
-            _ = Parse(serviceObject).ToArray();
+            _ = Parse(service).ToArray();
             return true;
         }
         catch (FormatException)
         {
-            serviceObject = null!;
+            service = default;
             return false;
         }
     }
 
     /// <summary>
-    /// 全サービスを表すサービス オブジェクトを作成します。
+    /// 全サービスを表す解決済みサービス定義を作成します。
     /// </summary>
-    /// <returns>全サービスを表すサービス オブジェクト。</returns>
-    private static ServiceObject CreateAnyServiceObject()
+    /// <returns>全サービスを表す解決済みサービス定義。</returns>
+    private static ResolvedService CreateAnyResolvedService()
     {
-        return new ServiceObject
+        return new ResolvedService
         {
-            Name = string.Empty,
             Protocol = AnyServiceProtocolRange,
             SourcePort = AnyServicePortRange,
             DestinationPort = AnyServicePortRange,
@@ -184,15 +178,14 @@ public static class ServiceValueParser
     }
 
     /// <summary>
-    /// Kind 指定を表すサービス オブジェクトを作成します。
+    /// Kind 指定を表す解決済みサービス定義を作成します。
     /// </summary>
     /// <param name="kind">Kind 指定。</param>
-    /// <returns>Kind 指定を表すサービス オブジェクト。</returns>
-    private static ServiceObject CreateKindServiceObject(string kind)
+    /// <returns>Kind 指定を表す解決済みサービス定義。</returns>
+    private static ResolvedService CreateKindResolvedService(string kind)
     {
-        return new ServiceObject
+        return new ResolvedService
         {
-            Name = string.Empty,
             Protocol = "255",
             SourcePort = "0",
             DestinationPort = "0",
@@ -400,16 +393,16 @@ public static class ServiceValueParser
     }
 
     /// <summary>
-    /// Kind 指定を表すための番兵サービス オブジェクトかを判定します。
+    /// Kind 指定を表すための番兵サービス定義かを判定します。
     /// </summary>
-    /// <param name="serviceObject">判定対象のサービス オブジェクト。</param>
+    /// <param name="serviceDefinition">判定対象のサービス定義。</param>
     /// <returns>Kind 指定用の番兵表現であれば <see langword="true"/>。</returns>
-    private static bool IsKindSentinelObject(ServiceObject serviceObject)
+    private static bool IsKindSentinelDefinition(ServiceDefinition serviceDefinition)
     {
-        return !string.IsNullOrWhiteSpace(serviceObject.Kind)
-            && serviceObject.Protocol.Trim().Equals("255", StringComparison.Ordinal)
-            && serviceObject.SourcePort.Trim().Equals("0", StringComparison.Ordinal)
-            && serviceObject.DestinationPort.Trim().Equals("0", StringComparison.Ordinal);
+        return !string.IsNullOrWhiteSpace(serviceDefinition.Kind)
+            && serviceDefinition.Protocol.Trim().Equals("255", StringComparison.Ordinal)
+            && serviceDefinition.SourcePort.Trim().Equals("0", StringComparison.Ordinal)
+            && serviceDefinition.DestinationPort.Trim().Equals("0", StringComparison.Ordinal);
     }
 
     /// <summary>

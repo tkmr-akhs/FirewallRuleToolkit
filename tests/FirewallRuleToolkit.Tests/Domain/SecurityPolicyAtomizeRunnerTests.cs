@@ -84,14 +84,14 @@ public sealed class SecurityPolicyAtomizeRunnerTests
     {
         return new SecurityPolicyResolver(
             new AddressReferenceResolver(
-                new EmptyAddressObjectLookup(),
+                new EmptyAddressDefinitionLookup(),
                 new EmptyAddressGroupLookup()),
             new ServiceReferenceResolver(
-                new FixedServiceObjectLookup(),
+                new FixedServiceDefinitionLookup(),
                 new EmptyServiceGroupLookup()));
     }
 
-    private sealed class EmptyAddressObjectLookup : ILookupRepository<string>
+    private sealed class EmptyAddressDefinitionLookup : ILookupRepository<string>
     {
         public bool TryGetByName(string name, out string value)
         {
@@ -117,13 +117,13 @@ public sealed class SecurityPolicyAtomizeRunnerTests
         }
     }
 
-    private sealed class FixedServiceObjectLookup : ILookupRepository<ServiceObject>
+    private sealed class FixedServiceDefinitionLookup : ILookupRepository<ServiceDefinition>
     {
-        public bool TryGetByName(string name, out ServiceObject serviceObject)
+        public bool TryGetByName(string name, out ServiceDefinition serviceDefinition)
         {
             if (name.Equals("service-http", StringComparison.Ordinal))
             {
-                serviceObject = new ServiceObject
+                serviceDefinition = new ServiceDefinition
                 {
                     Name = "service-http",
                     Protocol = "6",
@@ -134,7 +134,7 @@ public sealed class SecurityPolicyAtomizeRunnerTests
                 return true;
             }
 
-            serviceObject = null!;
+            serviceDefinition = null!;
             return false;
         }
 

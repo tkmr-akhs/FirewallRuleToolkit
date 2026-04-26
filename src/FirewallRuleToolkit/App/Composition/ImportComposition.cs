@@ -28,17 +28,17 @@ internal static class ImportComposition
             Encoding = encoding,
             HasByteOrderMarks = encoding.GetPreamble().Length > 0
         };
-        IReadRepository<AddressObject> addressObjectReader = new PaloAltoAddressObjectCsvReader(addressesPath, csvOptions);
+        IReadRepository<AddressDefinition> addressDefinitionReader = new PaloAltoAddressDefinitionCsvReader(addressesPath, csvOptions);
         IReadRepository<AddressGroupMembership> addressGroupReader = new PaloAltoAddressGroupCsvReader(addressGroupsPath, csvOptions);
-        IReadRepository<ServiceObject> serviceObjectReader = new PaloAltoServiceObjectCsvReader(servicesPath, csvOptions);
+        IReadRepository<ServiceDefinition> serviceDefinitionReader = new PaloAltoServiceDefinitionCsvReader(servicesPath, csvOptions);
         IReadRepository<ServiceGroupMembership> serviceGroupReader = new PaloAltoServiceGroupCsvReader(serviceGroupsPath, csvOptions);
         IReadRepository<ImportedSecurityPolicy> securityPolicyReader = new PaloAltoSecurityPolicyCsvReader(securityPoliciesPath, csvOptions);
 
         try
         {
-            addressObjectReader.EnsureAvailable();
+            addressDefinitionReader.EnsureAvailable();
             addressGroupReader.EnsureAvailable();
-            serviceObjectReader.EnsureAvailable();
+            serviceDefinitionReader.EnsureAvailable();
             serviceGroupReader.EnsureAvailable();
             securityPolicyReader.EnsureAvailable();
         }
@@ -54,9 +54,9 @@ internal static class ImportComposition
         {
             return CompositionRepositoryHelper.ExecuteReadOrThrow(
                 () => ImportUseCase.Execute(
-                    addressObjectReader,
+                    addressDefinitionReader,
                     addressGroupReader,
-                    serviceObjectReader,
+                    serviceDefinitionReader,
                     serviceGroupReader,
                     securityPolicyReader,
                     writeSession),

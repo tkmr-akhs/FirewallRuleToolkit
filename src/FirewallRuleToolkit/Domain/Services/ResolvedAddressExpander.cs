@@ -1,17 +1,17 @@
 ﻿namespace FirewallRuleToolkit.Domain.Services;
 
 /// <summary>
-/// アドレス オブジェクトを数値範囲へ正規化し、必要に応じて単一値へ展開します。
+/// 解決済みアドレス値を数値範囲へ正規化し、必要に応じて単一値へ展開します。
 /// </summary>
-internal static class AddressObjectExpander
+internal static class ResolvedAddressExpander
 {
     /// <summary>
-    /// アドレス オブジェクト群を、必要に応じて単一値まで展開した範囲列へ変換します。
+    /// 解決済みアドレス値群を、必要に応じて単一値まで展開した範囲列へ変換します。
     /// </summary>
-    /// <param name="addresses">変換対象のアドレス オブジェクト列。</param>
+    /// <param name="addresses">変換対象の解決済みアドレス値列。</param>
     /// <param name="threshold">範囲を分解するしきい値。</param>
     /// <returns>展開後のアドレス範囲列。</returns>
-    public static IEnumerable<AddressValue> Expand(IEnumerable<AddressObject> addresses, int threshold)
+    public static IEnumerable<AddressValue> Expand(IEnumerable<ResolvedAddress> addresses, int threshold)
     {
         ArgumentNullException.ThrowIfNull(addresses);
         ValidateThreshold(threshold);
@@ -26,26 +26,23 @@ internal static class AddressObjectExpander
     }
 
     /// <summary>
-    /// アドレス オブジェクト 1 件を範囲値へ変換します。
+    /// 解決済みアドレス値 1 件を範囲値へ変換します。
     /// </summary>
-    /// <param name="address">変換対象のアドレス オブジェクト。</param>
+    /// <param name="address">変換対象の解決済みアドレス値。</param>
     /// <returns>変換したアドレス範囲。</returns>
-    public static AddressValue Parse(AddressObject address)
+    public static AddressValue Parse(ResolvedAddress address)
     {
-        ArgumentNullException.ThrowIfNull(address);
-
         return AddressValueParser.Parse(ResolveAddressValue(address));
     }
 
     /// <summary>
-    /// アドレス オブジェクト 1 件を、必要に応じて単一値まで展開した範囲列へ変換します。
+    /// 解決済みアドレス値 1 件を、必要に応じて単一値まで展開した範囲列へ変換します。
     /// </summary>
-    /// <param name="address">変換対象のアドレス オブジェクト。</param>
+    /// <param name="address">変換対象の解決済みアドレス値。</param>
     /// <param name="threshold">範囲を分解するしきい値。</param>
     /// <returns>展開後のアドレス範囲列。</returns>
-    public static IEnumerable<AddressValue> Expand(AddressObject address, int threshold)
+    public static IEnumerable<AddressValue> Expand(ResolvedAddress address, int threshold)
     {
-        ArgumentNullException.ThrowIfNull(address);
         ValidateThreshold(threshold);
 
         var rawValue = ResolveAddressValue(address);
@@ -103,15 +100,13 @@ internal static class AddressObjectExpander
     }
 
     /// <summary>
-    /// アドレス オブジェクトから実際のアドレス値文字列を取り出します。
+    /// 解決済みアドレス値から実際のアドレス値文字列を取り出します。
     /// </summary>
-    /// <param name="address">対象オブジェクト。</param>
+    /// <param name="address">対象の解決済みアドレス値。</param>
     /// <returns>正規化前のアドレス値。</returns>
-    private static string ResolveAddressValue(AddressObject address)
+    private static string ResolveAddressValue(ResolvedAddress address)
     {
-        var value = string.IsNullOrWhiteSpace(address.Value)
-            ? address.Name
-            : address.Value;
+        var value = address.Value;
         if (string.IsNullOrWhiteSpace(value))
         {
             throw new FormatException("Address value is required.");

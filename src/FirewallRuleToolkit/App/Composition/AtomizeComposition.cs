@@ -14,9 +14,9 @@ internal static class AtomizeComposition
     public static int Run(string databaseDirectory, int threshold)
     {
         IReadRepository<ImportedSecurityPolicy> sourceSecurityPolicies = new SqliteImportedSecurityPolicyRepository(databaseDirectory);
-        var addressObjectSource = new SqliteAddressObjectRepository(databaseDirectory);
+        var addressDefinitionSource = new SqliteAddressDefinitionRepository(databaseDirectory);
         var addressGroupSource = new SqliteAddressGroupRepository(databaseDirectory);
-        var serviceObjectSource = new SqliteServiceObjectRepository(databaseDirectory);
+        var serviceDefinitionSource = new SqliteServiceDefinitionRepository(databaseDirectory);
         var serviceGroupSource = new SqliteServiceGroupRepository(databaseDirectory);
         IWriteRepositorySessionFactory writeSessionFactory = new SqliteRepositorySessionFactory(databaseDirectory);
 
@@ -24,10 +24,10 @@ internal static class AtomizeComposition
             () =>
             {
                 var addressResolver = new AddressReferenceResolver(
-                    LookupRepositoryFactory.CreateAddressObjectLookup(addressObjectSource),
+                    LookupRepositoryFactory.CreateAddressDefinitionLookup(addressDefinitionSource),
                     LookupRepositoryFactory.CreateAddressGroupLookup(addressGroupSource));
                 var serviceResolver = new ServiceReferenceResolver(
-                    LookupRepositoryFactory.CreateServiceObjectLookup(serviceObjectSource),
+                    LookupRepositoryFactory.CreateServiceDefinitionLookup(serviceDefinitionSource),
                     LookupRepositoryFactory.CreateServiceGroupLookup(serviceGroupSource));
                 var securityPolicyResolver = new SecurityPolicyResolver(addressResolver, serviceResolver);
 
@@ -42,9 +42,9 @@ internal static class AtomizeComposition
             },
             static _ => new ApplicationUsageException("Import has not been executed. Please run import first."),
             sourceSecurityPolicies.EnsureAvailable,
-            addressObjectSource.EnsureAvailable,
+            addressDefinitionSource.EnsureAvailable,
             addressGroupSource.EnsureAvailable,
-            serviceObjectSource.EnsureAvailable,
+            serviceDefinitionSource.EnsureAvailable,
             serviceGroupSource.EnsureAvailable);
     }
 

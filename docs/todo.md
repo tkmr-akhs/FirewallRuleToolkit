@@ -12,7 +12,7 @@
 
 このメモは、コードレビューで見つかったが今回対応しなかった指摘点を整理したものです。
 
-対応済みの `policy index` 型整理と Domain entity の必須性整理は含めません。
+対応済みの `policy index` 型整理、Domain entity の必須性整理、参照モデルと解決済み値モデルの分離は含めません。
 
 ## 高優先度
 
@@ -25,6 +25,11 @@
   - `import` 後に atomic / merged / metadata が残り得ます。
   - `atomize` 後にも既存 merged が残り得ます。
   - `stat` / `export` はテーブル存在だけを見ているため、古い整理結果を利用する危険があります。
+
+- [ ] [bug] `stat` の段階表示を処理フローの依存関係に合わせる
+  - 現在は merged テーブルが存在すれば、atomize が未実行扱いでも `Merge: completed` と表示できます。
+  - `import` -> `atomize` -> `merge` の依存関係と表示がずれると、DB の状態を誤認しやすくなります。
+  - 方針案: 下流段階は上流段階が completed のときだけ completed 判定する、または成果物の世代情報で整合性を確認する。
 
 - [ ] [ux] merge / test の警告を終了コードに反映できるようにする
   - action range overlap や test warning があっても現在は成功終了します。
@@ -46,6 +51,11 @@
   - `any` / `ANY` などの扱いが入口によって変わる箇所があります。
   - 方針案: 正規化を Domain 側へ寄せ、Infra は入力形式の読み取りに集中させる。
 
+- [ ] [ref] Domain から `ILogger` 依存を外す
+  - Domain service が `Microsoft.Extensions.Logging` とローカル logging helper に依存しています。
+  - 業務判定と診断出力が密結合になり、Domain 単体での再利用性が下がります。
+  - 方針案: Domain はイベント / 診断結果を返し、App 層で logger へ変換する。
+
 - [ ] [spec] well-known port 制御の値検証を強化する
   - `wkpthreshold = 0` が通り、実質的に制御が無効化されます。
   - `wkport = 0` も実務上の意味が薄い可能性があります。
@@ -58,6 +68,11 @@
   - JSON / SQLite 復元時も不正値が入り得ます。
   - 方針案: factory / constructor 化、または復元境界での検証を追加する。
 
+- [ ] [ref] Composition root の配置と App 層の Infra 依存を整理する
+  - `App.Composition` が SQLite / CSV / Palo Alto reader を直接生成しています。
+  - 「App 層はユースケース、具象配線は入口側」と見るなら、Composition は CLI 直下または top-level Composition へ分離したほうが境界が明確になります。
+  - 方針案: App.UseCases は Port と純粋な入力値だけを受け取り、具象 Infra の組み立ては CLI / composition root 側へ移す。
+
 - [ ] [bug] `ExportTarget` / `LogType` の未定義 flag 値を拒否する
   - config JSON などから数値 enum を渡すと、未定義 bit が通る可能性があります。
   - `target: 4` のような値が「非 None だが何も export しない」状態を作れます。
@@ -65,6 +80,11 @@
 - [ ] [ref] App / UseCase から global logger 依存を外す
   - UseCase が `ProgramLogger` を直接参照しており、App 層の再利用性とテスト容易性が下がっています。
   - 方針案: logger を引数または App service として注入する。
+
+- [ ] [ref] `GroupId` の名前で由来と用途を明確にする
+  - 実体は Palo Alto CSV の `ルールの使用状況 内容` から切り出した merge grouping 用の値です。
+  - 汎用的な `GroupId` という名前だけでは、アドレス グループやサービス グループとの区別がつきにくく、何を表す ID か読み取りづらいです。
+  - 方針案: 挙動は変えず、`RuleUsageGroupId` や `MergeGroupId` などへ改名する。
 
 - [ ] [bug][ux] SQLite availability check の副作用を減らす
   - 一部の availability check は DB ファイル作成を伴う可能性があります。

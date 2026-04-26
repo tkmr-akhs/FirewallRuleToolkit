@@ -17,7 +17,7 @@ public sealed class AddressGroupCompactorTests
                 new AddressGroupMembership { GroupName = "branch-offices", MemberName = "host-b" },
                 new AddressGroupMembership { GroupName = "ignored-single", MemberName = "host-c" }
             ]),
-            new StubAddressObjectLookup(new Dictionary<string, string>(StringComparer.Ordinal)
+            new StubAddressDefinitionLookup(new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["host-a"] = "192.168.1.10/32",
                 ["host-b"] = "192.168.1.11/32",
@@ -54,7 +54,7 @@ public sealed class AddressGroupCompactorTests
                 new AddressGroupMembership { GroupName = "pair-plus", MemberName = "pair" },
                 new AddressGroupMembership { GroupName = "pair-plus", MemberName = "host-c" }
             ]),
-            new StubAddressObjectLookup(new Dictionary<string, string>(StringComparer.Ordinal)
+            new StubAddressDefinitionLookup(new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["host-a"] = "10.0.0.1/32",
                 ["host-b"] = "10.0.0.2/32",
@@ -86,7 +86,7 @@ public sealed class AddressGroupCompactorTests
             [
                 new AddressGroupMembership { GroupName = "small-range", MemberName = "range-a" }
             ]),
-            new StubAddressObjectLookup(new Dictionary<string, string>(StringComparer.Ordinal)
+            new StubAddressDefinitionLookup(new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["range-a"] = "10.0.0.1-10.0.0.3"
             }),
@@ -118,7 +118,7 @@ public sealed class AddressGroupCompactorTests
                 new AddressGroupMembership { GroupName = "group", MemberName = "host-c" },
                 new AddressGroupMembership { GroupName = "group", MemberName = "host-d" }
             ]),
-            new StubAddressObjectLookup(new Dictionary<string, string>(StringComparer.Ordinal)
+            new StubAddressDefinitionLookup(new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["host-a"] = "10.0.0.1/32",
                 ["host-b"] = "10.0.0.2/32",
@@ -175,11 +175,11 @@ public sealed class AddressGroupCompactorTests
         }
     }
 
-    private sealed class StubAddressObjectLookup : ILookupRepository<string>
+    private sealed class StubAddressDefinitionLookup : ILookupRepository<string>
     {
         private readonly IReadOnlyDictionary<string, string> values;
 
-        public StubAddressObjectLookup(IReadOnlyDictionary<string, string> values)
+        public StubAddressDefinitionLookup(IReadOnlyDictionary<string, string> values)
         {
             this.values = values;
         }

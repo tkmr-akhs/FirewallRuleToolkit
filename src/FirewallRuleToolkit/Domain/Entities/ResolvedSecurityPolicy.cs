@@ -21,9 +21,9 @@ internal sealed class ResolvedSecurityPolicy
     public required IReadOnlyList<string> FromZones { get; init; }
 
     /// <summary>
-    /// 送信元アドレス一覧を取得します。
+    /// 解決済み送信元アドレス一覧を取得します。
     /// </summary>
-    public required IReadOnlyList<AddressObject> SourceAddresses { get; init; }
+    public required IReadOnlyList<ResolvedAddress> SourceAddresses { get; init; }
 
     /// <summary>
     /// 宛先ゾーン一覧を取得します。
@@ -31,9 +31,9 @@ internal sealed class ResolvedSecurityPolicy
     public required IReadOnlyList<string> ToZones { get; init; }
 
     /// <summary>
-    /// 宛先アドレス一覧を取得します。
+    /// 解決済み宛先アドレス一覧を取得します。
     /// </summary>
-    public required IReadOnlyList<AddressObject> DestinationAddresses { get; init; }
+    public required IReadOnlyList<ResolvedAddress> DestinationAddresses { get; init; }
 
     /// <summary>
     /// アプリケーション一覧を取得します。
@@ -41,9 +41,9 @@ internal sealed class ResolvedSecurityPolicy
     public required IReadOnlyList<string> Applications { get; init; }
 
     /// <summary>
-    /// サービス定義一覧を取得します。
+    /// 解決済みサービス定義一覧を取得します。
     /// </summary>
-    public required IReadOnlyList<ServiceObject> Services { get; init; }
+    public required IReadOnlyList<ResolvedService> Services { get; init; }
 
     /// <summary>
     /// アクションを取得します。

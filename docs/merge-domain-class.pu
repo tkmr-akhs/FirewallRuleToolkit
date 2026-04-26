@@ -1,5 +1,5 @@
 ﻿@startuml merge-domain-class
-title Merge Domain Class Diagram
+title Domain Class Diagram
 
 hide empty members
 skinparam classAttributeIconSize 0
@@ -8,6 +8,48 @@ skinparam shadowing false
 skinparam linetype ortho
 
 package "Domain.Services" {
+  class SecurityPolicyResolver <<service>> {
+    +Resolve(...) : ResolvedSecurityPolicy
+    +Resolve(...) : IEnumerable<ResolvedSecurityPolicy>
+  }
+
+  class AddressReferenceResolver <<service>> {
+    +Resolve(...) : IEnumerable<ResolvedAddress>
+    -ResolveValue(...) : IEnumerable<ResolvedAddress>
+  }
+
+  class ServiceReferenceResolver <<service>> {
+    +Resolve(...) : IEnumerable<ResolvedService>
+    -ResolveValue(...) : IEnumerable<ResolvedService>
+  }
+
+  class SecurityPolicyAtomizer <<service>> {
+    +Atomize(...) : IEnumerable<AtomicSecurityPolicy>
+  }
+
+  class ResolvedAddressExpander <<static>> {
+    +Expand(...) : IEnumerable<AddressValue>
+    +Parse(...) : AddressValue
+  }
+
+  class ResolvedServiceExpander <<static>> {
+    +Expand(...) : IEnumerable<ServiceValue>
+    +Parse(...) : IEnumerable<ServiceValue>
+  }
+
+  class AddressValueParser <<static>> {
+    +Parse(...) : AddressValue
+    +NormalizeResolvedValue(...) : string
+    +TryNormalizeBuiltInValue(...) : bool
+  }
+
+  class ServiceValueParser <<static>> {
+    +ParseReference(...) : ResolvedService
+    +NormalizeDefinition(...) : ResolvedService
+    +TryNormalizeBuiltInValue(...) : bool
+    +Parse(...) : IEnumerable<ServiceValue>
+  }
+
   class SecurityPolicyMergeRunner <<runner>> {
     +Run(...) : SecurityPolicyMergeRunResult
     -FlushPartitionAfterShadowing(...)
@@ -92,8 +134,8 @@ package "Domain.Services.Merging" {
     +Services : HashSet<ServiceValue>
     +Action : SecurityPolicyAction
     +GroupId : string
-    +MinimumIndex : ulong
-    +MaximumIndex : ulong
+    +MinimumIndex : uint
+    +MaximumIndex : uint
     +OriginalPolicyNames : HashSet<string>
     +FromMergedSecurityPolicy(...) : MutableMergedSecurityPolicy
     +ToMergedSecurityPolicy() : MergedSecurityPolicy
@@ -137,8 +179,8 @@ package "Domain.Services.Merging" {
     +Service : ServiceValue
     +Action : SecurityPolicyAction
     +GroupId : string
-    +MinimumIndex : ulong
-    +MaximumIndex : ulong
+    +MinimumIndex : uint
+    +MaximumIndex : uint
     +OriginalPolicyNames : HashSet<string>
   }
 }
@@ -156,6 +198,45 @@ package "Domain.Services.Results" {
 }
 
 package "Domain.Entities" {
+  class AddressDefinition <<entity>> {
+    +Name : string
+    +Value : string
+  }
+
+  class ServiceDefinition <<entity>> {
+    +Name : string
+    +Protocol : string
+    +SourcePort : string
+    +DestinationPort : string
+    +Kind : string?
+  }
+
+  class ImportedSecurityPolicy <<entity>> {
+    +Index : uint
+    +Name : string
+    +FromZones : IReadOnlyList<string>
+    +SourceAddressReferences : IReadOnlyList<string>
+    +ToZones : IReadOnlyList<string>
+    +DestinationAddressReferences : IReadOnlyList<string>
+    +Applications : IReadOnlyList<string>
+    +ServiceReferences : IReadOnlyList<string>
+    +Action : SecurityPolicyAction
+    +GroupId : string
+  }
+
+  class ResolvedSecurityPolicy <<entity>> {
+    +Index : uint
+    +Name : string
+    +FromZones : IReadOnlyList<string>
+    +SourceAddresses : IReadOnlyList<ResolvedAddress>
+    +ToZones : IReadOnlyList<string>
+    +DestinationAddresses : IReadOnlyList<ResolvedAddress>
+    +Applications : IReadOnlyList<string>
+    +Services : IReadOnlyList<ResolvedService>
+    +Action : SecurityPolicyAction
+    +GroupId : string
+  }
+
   class AtomicSecurityPolicy <<entity>> {
     +FromZone : string
     +SourceAddress : AddressValue
@@ -165,7 +246,7 @@ package "Domain.Entities" {
     +Service : ServiceValue
     +Action : SecurityPolicyAction
     +GroupId : string
-    +OriginalIndex : ulong
+    +OriginalIndex : uint
     +OriginalPolicyName : string
   }
 
@@ -178,13 +259,24 @@ package "Domain.Entities" {
     +Services : IReadOnlyCollection<ServiceValue>
     +Action : SecurityPolicyAction
     +GroupId : string
-    +MinimumIndex : ulong
-    +MaximumIndex : ulong
+    +MinimumIndex : uint
+    +MaximumIndex : uint
     +OriginalPolicyNames : IReadOnlyCollection<string>
   }
 }
 
 package "Domain.ValueObjects" {
+  class ResolvedAddress <<struct>> {
+    +Value : string
+  }
+
+  class ResolvedService <<struct>> {
+    +Protocol : string
+    +SourcePort : string
+    +DestinationPort : string
+    +Kind : string?
+  }
+
   class AddressValue <<struct>> {
     +Start : uint
     +Finish : uint
@@ -209,6 +301,35 @@ package "Domain.Enums" {
     ResetBoth
   }
 }
+
+SecurityPolicyResolver *-- AddressReferenceResolver
+SecurityPolicyResolver *-- ServiceReferenceResolver
+SecurityPolicyResolver ..> ImportedSecurityPolicy
+SecurityPolicyResolver ..> ResolvedSecurityPolicy
+SecurityPolicyResolver ..> ResolvedAddress
+SecurityPolicyResolver ..> ResolvedService
+
+AddressReferenceResolver ..> AddressDefinition : lookup
+AddressReferenceResolver ..> ResolvedAddress
+AddressReferenceResolver ..> AddressValueParser
+ServiceReferenceResolver ..> ServiceDefinition : lookup
+ServiceReferenceResolver ..> ResolvedService
+ServiceReferenceResolver ..> ServiceValueParser
+
+SecurityPolicyAtomizer ..> ResolvedSecurityPolicy
+SecurityPolicyAtomizer ..> AtomicSecurityPolicy
+SecurityPolicyAtomizer ..> ResolvedAddressExpander
+SecurityPolicyAtomizer ..> ResolvedServiceExpander
+ResolvedAddressExpander ..> ResolvedAddress
+ResolvedAddressExpander ..> AddressValue
+ResolvedAddressExpander ..> AddressValueParser
+ResolvedServiceExpander ..> ResolvedService
+ResolvedServiceExpander ..> ServiceValue
+ResolvedServiceExpander ..> ServiceValueParser
+AddressValueParser ..> AddressValue
+ServiceValueParser ..> ServiceDefinition
+ServiceValueParser ..> ResolvedService
+ServiceValueParser ..> ServiceValue
 
 SecurityPolicyMergeRunner *-- SecurityPolicyMerger
 SecurityPolicyMergeRunner ..> MergePartitionKey : partition
@@ -270,6 +391,10 @@ MergeSignatureFormatter ..> ServiceValue
 SecurityPolicyContainment ..> AddressValue
 SecurityPolicyContainment ..> ServiceValue
 
+ImportedSecurityPolicy ..> SecurityPolicyAction
+ResolvedSecurityPolicy ..> ResolvedAddress
+ResolvedSecurityPolicy ..> ResolvedService
+ResolvedSecurityPolicy ..> SecurityPolicyAction
 AtomicSecurityPolicy ..> AddressValue
 AtomicSecurityPolicy ..> ServiceValue
 AtomicSecurityPolicy ..> SecurityPolicyAction

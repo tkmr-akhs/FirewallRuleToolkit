@@ -60,12 +60,12 @@ internal static class ExportComposition
 
     private static AddressGroupCompactor CreateAddressGroupCompactor(string databaseDirectory)
     {
-        var addressObjects = new SqliteAddressObjectRepository(databaseDirectory);
+        var addressDefinitions = new SqliteAddressDefinitionRepository(databaseDirectory);
         var addressGroups = new SqliteAddressGroupRepository(databaseDirectory);
         var toolMetadata = new SqliteToolMetadataRepository(databaseDirectory);
 
         CompositionRepositoryHelper.EnsureAvailableOrThrow(
-            addressObjects.EnsureAvailable,
+            addressDefinitions.EnsureAvailable,
             static _ => new ApplicationUsageException("Import has not been executed. Please run import first."));
         CompositionRepositoryHelper.EnsureAvailableOrThrow(
             addressGroups.EnsureAvailable,
@@ -81,7 +81,7 @@ internal static class ExportComposition
 
         return new AddressGroupCompactor(
             addressGroups,
-            LookupRepositoryFactory.CreateAddressObjectLookup(addressObjects),
+            LookupRepositoryFactory.CreateAddressDefinitionLookup(addressDefinitions),
             LookupRepositoryFactory.CreateAddressGroupLookup(addressGroups),
             atomizeThreshold);
     }

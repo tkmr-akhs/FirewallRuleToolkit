@@ -6,9 +6,9 @@
 public sealed class ServiceReferenceResolver
 {
     /// <summary>
-    /// サービス オブジェクト参照の lookup です。
+    /// 名前付きサービス定義の lookup です。
     /// </summary>
-    private readonly ILookupRepository<ServiceObject> serviceObjectLookup;
+    private readonly ILookupRepository<ServiceDefinition> serviceDefinitionLookup;
 
     /// <summary>
     /// サービス グループ参照の lookup です。
@@ -18,13 +18,13 @@ public sealed class ServiceReferenceResolver
     /// <summary>
     /// サービス参照名を解決するクラスのコンストラクターです。
     /// </summary>
-    /// <param name="serviceObjectLookup">サービス オブジェクト lookup。</param>
+    /// <param name="serviceDefinitionLookup">名前付きサービス定義 lookup。</param>
     /// <param name="serviceGroupLookup">サービス グループ lookup。</param>
     public ServiceReferenceResolver(
-        ILookupRepository<ServiceObject> serviceObjectLookup,
+        ILookupRepository<ServiceDefinition> serviceDefinitionLookup,
         ILookupRepository<IReadOnlyList<string>> serviceGroupLookup)
     {
-        this.serviceObjectLookup = serviceObjectLookup ?? throw new ArgumentNullException(nameof(serviceObjectLookup));
+        this.serviceDefinitionLookup = serviceDefinitionLookup ?? throw new ArgumentNullException(nameof(serviceDefinitionLookup));
         this.serviceGroupLookup = serviceGroupLookup ?? throw new ArgumentNullException(nameof(serviceGroupLookup));
     }
 
@@ -32,8 +32,8 @@ public sealed class ServiceReferenceResolver
     /// 入力値列を解決します。
     /// </summary>
     /// <param name="values">解決対象の値列。</param>
-    /// <returns>解決後のサービス オブジェクト列。</returns>
-    public IEnumerable<ServiceObject> Resolve(IEnumerable<string> values)
+    /// <returns>解決後のサービス定義列。</returns>
+    public IEnumerable<ResolvedService> Resolve(IEnumerable<string> values)
     {
         ArgumentNullException.ThrowIfNull(values);
 
@@ -49,12 +49,12 @@ public sealed class ServiceReferenceResolver
     }
 
     /// <summary>
-    /// 単一の値を解決します。組み込み指定、サービス オブジェクト、サービス グループ、直指定、または Kind 指定として解決を試みます。
+    /// 単一の値を解決します。組み込み指定、名前付きサービス定義、サービス グループ、直指定、または Kind 指定として解決を試みます。
     /// </summary>
     /// <param name="value">解決対象のサービス参照。</param>
     /// <param name="visitedGroups">再帰検出済みのサービス グループ名。</param>
-    /// <returns>解決後のサービス オブジェクト列。</returns>
-    private IEnumerable<ServiceObject> ResolveValue(string value, HashSet<string> visitedGroups)
+    /// <returns>解決後のサービス定義列。</returns>
+    private IEnumerable<ResolvedService> ResolveValue(string value, HashSet<string> visitedGroups)
     {
         if (ServiceValueParser.TryNormalizeBuiltInValue(value, out var builtInValue))
         {
@@ -62,9 +62,9 @@ public sealed class ServiceReferenceResolver
             yield break;
         }
 
-        if (serviceObjectLookup.TryGetByName(value, out var serviceObject))
+        if (serviceDefinitionLookup.TryGetByName(value, out var serviceDefinition))
         {
-            yield return ServiceValueParser.NormalizeObject(serviceObject);
+            yield return ServiceValueParser.NormalizeDefinition(serviceDefinition);
             yield break;
         }
 
@@ -93,6 +93,6 @@ public sealed class ServiceReferenceResolver
             yield break;
         }
 
-        yield return ServiceValueParser.ParseObject(value);
+        yield return ServiceValueParser.ParseReference(value);
     }
 }

@@ -6,9 +6,9 @@
 public interface IWriteRepositorySession : IDisposable
 {
     /// <summary>
-    /// アドレス オブジェクト repository を取得します。
+    /// 名前付きアドレス定義 repository を取得します。
     /// </summary>
-    IReadWriteRepository<AddressObject> AddressObjects { get; }
+    IReadWriteRepository<AddressDefinition> AddressDefinitions { get; }
 
     /// <summary>
     /// アドレス グループ repository を取得します。
@@ -16,9 +16,9 @@ public interface IWriteRepositorySession : IDisposable
     IReadWriteRepository<AddressGroupMembership> AddressGroups { get; }
 
     /// <summary>
-    /// サービス オブジェクト repository を取得します。
+    /// 名前付きサービス定義 repository を取得します。
     /// </summary>
-    IReadWriteRepository<ServiceObject> ServiceObjects { get; }
+    IReadWriteRepository<ServiceDefinition> ServiceDefinitions { get; }
 
     /// <summary>
     /// サービス グループ repository を取得します。

@@ -12,7 +12,7 @@ public sealed class SecurityPolicyResolverTests
     {
         var resolver = new SecurityPolicyResolver(
             new AddressReferenceResolver(
-                new StubAddressObjectLookup(new Dictionary<string, string>(StringComparer.Ordinal)
+                new StubAddressDefinitionLookup(new Dictionary<string, string>(StringComparer.Ordinal)
                 {
                     ["src-host"] = "192.168.0.10/32",
                     ["dst-host"] = "10.0.0.10/32"
@@ -22,9 +22,9 @@ public sealed class SecurityPolicyResolverTests
                     ["src-group"] = ["src-host"]
                 })),
             new ServiceReferenceResolver(
-                new StubServiceObjectLookup(new Dictionary<string, ServiceObject>(StringComparer.Ordinal)
+                new StubServiceDefinitionLookup(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)
                 {
-                    ["svc-https"] = new ServiceObject
+                    ["svc-https"] = new ServiceDefinition
                     {
                         Name = "svc-https",
                         Protocol = "6",
@@ -74,11 +74,11 @@ public sealed class SecurityPolicyResolverTests
             });
     }
 
-    private sealed class StubAddressObjectLookup : ILookupRepository<string>
+    private sealed class StubAddressDefinitionLookup : ILookupRepository<string>
     {
         private readonly IReadOnlyDictionary<string, string> values;
 
-        public StubAddressObjectLookup(IReadOnlyDictionary<string, string> values)
+        public StubAddressDefinitionLookup(IReadOnlyDictionary<string, string> values)
         {
             this.values = values;
         }
@@ -112,18 +112,18 @@ public sealed class SecurityPolicyResolverTests
         }
     }
 
-    private sealed class StubServiceObjectLookup : ILookupRepository<ServiceObject>
+    private sealed class StubServiceDefinitionLookup : ILookupRepository<ServiceDefinition>
     {
-        private readonly IReadOnlyDictionary<string, ServiceObject> values;
+        private readonly IReadOnlyDictionary<string, ServiceDefinition> values;
 
-        public StubServiceObjectLookup(IReadOnlyDictionary<string, ServiceObject> values)
+        public StubServiceDefinitionLookup(IReadOnlyDictionary<string, ServiceDefinition> values)
         {
             this.values = values;
         }
 
-        public bool TryGetByName(string name, out ServiceObject serviceObject)
+        public bool TryGetByName(string name, out ServiceDefinition serviceDefinition)
         {
-            return values.TryGetValue(name, out serviceObject!);
+            return values.TryGetValue(name, out serviceDefinition!);
         }
 
         public void EnsureAvailable()

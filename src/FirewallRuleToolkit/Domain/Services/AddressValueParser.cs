@@ -60,11 +60,11 @@ public static class AddressValueParser
     }
 
     /// <summary>
-    /// アドレス オブジェクト値として扱える表現へ正規化します。
+    /// 解決済みアドレス値として扱える表現へ正規化します。
     /// </summary>
     /// <param name="value">正規化対象のアドレス文字列表現。</param>
-    /// <returns>正規化したアドレス オブジェクト値。</returns>
-    public static string NormalizeObjectValue(string value)
+    /// <returns>正規化した解決済みアドレス値。</returns>
+    public static string NormalizeResolvedValue(string value)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
 
@@ -89,10 +89,10 @@ public static class AddressValueParser
     }
 
     /// <summary>
-    /// 組み込みアドレス表現をアドレス オブジェクト値へ正規化します。
+    /// 組み込みアドレス表現を解決済みアドレス値へ正規化します。
     /// </summary>
     /// <param name="value">正規化対象のアドレス文字列表現。</param>
-    /// <param name="normalizedValue">正規化したアドレス オブジェクト値。</param>
+    /// <param name="normalizedValue">正規化した解決済みアドレス値。</param>
     /// <returns>組み込みアドレス表現として解釈できた場合は <see langword="true"/>。</returns>
     public static bool TryNormalizeBuiltInValue(string value, out string normalizedValue)
     {

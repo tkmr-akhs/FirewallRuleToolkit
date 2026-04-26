@@ -8,11 +8,11 @@ namespace FirewallRuleToolkit.App.Composition;
 internal static class LookupRepositoryFactory
 {
     /// <summary>
-    /// アドレス オブジェクト lookup をメモリ上に構築します。
+    /// 名前付きアドレス定義 lookup をメモリ上に構築します。
     /// </summary>
-    /// <param name="source">アドレス オブジェクトの読み取り元。</param>
+    /// <param name="source">名前付きアドレス定義の読み取り元。</param>
     /// <returns>メモリ上の lookup。</returns>
-    public static ILookupRepository<string> CreateAddressObjectLookup(IReadRepository<AddressObject> source)
+    public static ILookupRepository<string> CreateAddressDefinitionLookup(IReadRepository<AddressDefinition> source)
     {
         ArgumentNullException.ThrowIfNull(source);
 
@@ -39,15 +39,15 @@ internal static class LookupRepositoryFactory
     }
 
     /// <summary>
-    /// サービス オブジェクト lookup をメモリ上に構築します。
+    /// 名前付きサービス定義 lookup をメモリ上に構築します。
     /// </summary>
-    /// <param name="source">サービス オブジェクトの読み取り元。</param>
+    /// <param name="source">名前付きサービス定義の読み取り元。</param>
     /// <returns>メモリ上の lookup。</returns>
-    public static ILookupRepository<ServiceObject> CreateServiceObjectLookup(IReadRepository<ServiceObject> source)
+    public static ILookupRepository<ServiceDefinition> CreateServiceDefinitionLookup(IReadRepository<ServiceDefinition> source)
     {
         ArgumentNullException.ThrowIfNull(source);
 
-        return new InMemoryLookupRepository<ServiceObject>(
+        return new InMemoryLookupRepository<ServiceDefinition>(
             source.GetAll().Select(static item => KeyValuePair.Create(item.Name, item)));
     }
 

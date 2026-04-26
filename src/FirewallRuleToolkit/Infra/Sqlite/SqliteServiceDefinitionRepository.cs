@@ -1,16 +1,16 @@
 ﻿namespace FirewallRuleToolkit.Infra.Sqlite;
 
 /// <summary>
-/// サービス オブジェクトを SQLite で読み書きします。
+/// 名前付きサービス定義を SQLite で読み書きします。
 /// </summary>
-public sealed class SqliteServiceObjectRepository : SqliteReadWriteRepositoryBase<ServiceObject>
+public sealed class SqliteServiceDefinitionRepository : SqliteReadWriteRepositoryBase<ServiceDefinition>
 {
-    private const string TableName = SqliteDatabaseLayout.ServiceObjects.TableName;
-    private const string NameColumn = SqliteDatabaseLayout.ServiceObjects.NameColumn;
-    private const string ProtocolColumn = SqliteDatabaseLayout.ServiceObjects.ProtocolColumn;
-    private const string SourcePortColumn = SqliteDatabaseLayout.ServiceObjects.SourcePortColumn;
-    private const string DestinationPortColumn = SqliteDatabaseLayout.ServiceObjects.DestinationPortColumn;
-    private const string KindColumn = SqliteDatabaseLayout.ServiceObjects.KindColumn;
+    private const string TableName = SqliteDatabaseLayout.ServiceDefinitions.TableName;
+    private const string NameColumn = SqliteDatabaseLayout.ServiceDefinitions.NameColumn;
+    private const string ProtocolColumn = SqliteDatabaseLayout.ServiceDefinitions.ProtocolColumn;
+    private const string SourcePortColumn = SqliteDatabaseLayout.ServiceDefinitions.SourcePortColumn;
+    private const string DestinationPortColumn = SqliteDatabaseLayout.ServiceDefinitions.DestinationPortColumn;
+    private const string KindColumn = SqliteDatabaseLayout.ServiceDefinitions.KindColumn;
 
     private const string InitializeCommandText =
         "DROP TABLE IF EXISTS " + TableName + ";" +
@@ -32,17 +32,17 @@ public sealed class SqliteServiceObjectRepository : SqliteReadWriteRepositoryBas
         "VALUES ($name, $protocol, $sourcePort, $destinationPort, $kind);";
 
     /// <summary>
-    /// サービス オブジェクトを SQLite で読み書きするクラスのコンストラクターです。
+    /// 名前付きサービス定義を SQLite で読み書きするクラスのコンストラクターです。
     /// </summary>
     /// <param name="databaseDirectory">SQLite データベース ディレクトリ。</param>
-    public SqliteServiceObjectRepository(string databaseDirectory)
+    public SqliteServiceDefinitionRepository(string databaseDirectory)
         : base(
             databaseDirectory,
             TableName,
             InitializeCommandText,
             SelectAllCommandText,
             InsertCommandText,
-            static reader => new ServiceObject
+            static reader => new ServiceDefinition
             {
                 Name = reader.GetString(0),
                 Protocol = reader.GetString(1),
@@ -50,25 +50,25 @@ public sealed class SqliteServiceObjectRepository : SqliteReadWriteRepositoryBas
                 DestinationPort = reader.GetString(3),
                 Kind = reader.IsDBNull(4) ? null : reader.GetString(4)
             },
-            static (command, serviceObject) =>
+            static (command, serviceDefinition) =>
             {
-                command.Parameters.AddWithValue("$name", serviceObject.Name);
-                command.Parameters.AddWithValue("$protocol", serviceObject.Protocol);
-                command.Parameters.AddWithValue("$sourcePort", serviceObject.SourcePort);
-                command.Parameters.AddWithValue("$destinationPort", serviceObject.DestinationPort);
-                command.Parameters.AddWithValue("$kind", (object?)serviceObject.Kind ?? DBNull.Value);
+                command.Parameters.AddWithValue("$name", serviceDefinition.Name);
+                command.Parameters.AddWithValue("$protocol", serviceDefinition.Protocol);
+                command.Parameters.AddWithValue("$sourcePort", serviceDefinition.SourcePort);
+                command.Parameters.AddWithValue("$destinationPort", serviceDefinition.DestinationPort);
+                command.Parameters.AddWithValue("$kind", (object?)serviceDefinition.Kind ?? DBNull.Value);
             })
     {
     }
 
-    internal SqliteServiceObjectRepository(SqliteWriteTransaction writeTransaction)
+    internal SqliteServiceDefinitionRepository(SqliteWriteTransaction writeTransaction)
         : base(
             writeTransaction,
             TableName,
             InitializeCommandText,
             SelectAllCommandText,
             InsertCommandText,
-            static reader => new ServiceObject
+            static reader => new ServiceDefinition
             {
                 Name = reader.GetString(0),
                 Protocol = reader.GetString(1),
@@ -76,13 +76,13 @@ public sealed class SqliteServiceObjectRepository : SqliteReadWriteRepositoryBas
                 DestinationPort = reader.GetString(3),
                 Kind = reader.IsDBNull(4) ? null : reader.GetString(4)
             },
-            static (command, serviceObject) =>
+            static (command, serviceDefinition) =>
             {
-                command.Parameters.AddWithValue("$name", serviceObject.Name);
-                command.Parameters.AddWithValue("$protocol", serviceObject.Protocol);
-                command.Parameters.AddWithValue("$sourcePort", serviceObject.SourcePort);
-                command.Parameters.AddWithValue("$destinationPort", serviceObject.DestinationPort);
-                command.Parameters.AddWithValue("$kind", (object?)serviceObject.Kind ?? DBNull.Value);
+                command.Parameters.AddWithValue("$name", serviceDefinition.Name);
+                command.Parameters.AddWithValue("$protocol", serviceDefinition.Protocol);
+                command.Parameters.AddWithValue("$sourcePort", serviceDefinition.SourcePort);
+                command.Parameters.AddWithValue("$destinationPort", serviceDefinition.DestinationPort);
+                command.Parameters.AddWithValue("$kind", (object?)serviceDefinition.Kind ?? DBNull.Value);
             })
     {
     }
@@ -93,7 +93,7 @@ public sealed class SqliteServiceObjectRepository : SqliteReadWriteRepositoryBas
         SqliteRepositoryHelper.EnsureTableAvailable(
             DatabasePath,
             TableName,
-            "Service objects are unavailable. Run import before lookup.");
+            "Service definitions are unavailable. Run import before lookup.");
     }
 
 }

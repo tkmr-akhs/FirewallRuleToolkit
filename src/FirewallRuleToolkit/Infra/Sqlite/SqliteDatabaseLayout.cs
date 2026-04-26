@@ -7,7 +7,7 @@ internal static class SqliteDatabaseLayout
 {
     public const string DatabaseFileName = "database.sqlite";
 
-    public static class AddressObjects
+    public static class AddressDefinitions
     {
         public const string TableName = "address_objects";
         public const string NameColumn = "name";
@@ -22,7 +22,7 @@ internal static class SqliteDatabaseLayout
         public const string GroupNameIndexName = "ix_address_group_members_group_name";
     }
 
-    public static class ServiceObjects
+    public static class ServiceDefinitions
     {
         public const string TableName = "service_objects";
         public const string NameColumn = "name";

@@ -14,9 +14,9 @@ internal static class StatComposition
     public static int Run(string databaseDirectory)
     {
         IItemCountRepository securityPolicies = new SqliteImportedSecurityPolicyRepository(databaseDirectory);
-        IItemCountRepository addressObjects = new SqliteAddressObjectRepository(databaseDirectory);
+        IItemCountRepository addressDefinitions = new SqliteAddressDefinitionRepository(databaseDirectory);
         IItemCountRepository addressGroups = new SqliteAddressGroupRepository(databaseDirectory);
-        IItemCountRepository serviceObjects = new SqliteServiceObjectRepository(databaseDirectory);
+        IItemCountRepository serviceDefinitions = new SqliteServiceDefinitionRepository(databaseDirectory);
         IItemCountRepository serviceGroups = new SqliteServiceGroupRepository(databaseDirectory);
 
         IItemCountRepository atomicPolicies = new SqliteAtomicPolicyRepository(databaseDirectory);
@@ -24,9 +24,9 @@ internal static class StatComposition
 
         return StatUseCase.Execute(
             securityPolicies,
-            addressObjects,
+            addressDefinitions,
             addressGroups,
-            serviceObjects,
+            serviceDefinitions,
             serviceGroups,
             atomicPolicies,
             mergedPolicies,

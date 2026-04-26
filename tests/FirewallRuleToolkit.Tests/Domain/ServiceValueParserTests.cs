@@ -6,9 +6,9 @@ namespace FirewallRuleToolkit.Tests.Domain;
 public sealed class ServiceValueParserTests
 {
     [Fact]
-    public void ParseObject_WhenAnyIsLowercase_ReturnsBuiltInAny()
+    public void ParseReference_WhenAnyIsLowercase_ReturnsBuiltInAny()
     {
-        var parsed = ServiceValueParser.ParseObject("any");
+        var parsed = ServiceValueParser.ParseReference("any");
 
         Assert.Equal("0-255", parsed.Protocol);
         Assert.Equal("0-65535", parsed.SourcePort);
@@ -17,9 +17,9 @@ public sealed class ServiceValueParserTests
     }
 
     [Fact]
-    public void ParseObject_WhenAnyCaseDiffers_ReturnsKindSentinel()
+    public void ParseReference_WhenAnyCaseDiffers_ReturnsKindSentinel()
     {
-        var parsed = ServiceValueParser.ParseObject("ANY");
+        var parsed = ServiceValueParser.ParseReference("ANY");
 
         Assert.Equal("255", parsed.Protocol);
         Assert.Equal("0", parsed.SourcePort);
@@ -28,9 +28,9 @@ public sealed class ServiceValueParserTests
     }
 
     [Fact]
-    public void ParseObject_WhenAxisAnyCaseDiffers_ReturnsKindSentinel()
+    public void ParseReference_WhenAxisAnyCaseDiffers_ReturnsKindSentinel()
     {
-        var parsed = ServiceValueParser.ParseObject("TCP ANY 80");
+        var parsed = ServiceValueParser.ParseReference("TCP ANY 80");
 
         Assert.Equal("255", parsed.Protocol);
         Assert.Equal("0", parsed.SourcePort);
@@ -39,9 +39,9 @@ public sealed class ServiceValueParserTests
     }
 
     [Fact]
-    public void NormalizeObject_WhenAxisAnyCaseDiffers_ThrowsFormatException()
+    public void NormalizeDefinition_WhenAxisAnyCaseDiffers_ThrowsFormatException()
     {
-        var serviceObject = new ServiceObject
+        var serviceDefinition = new ServiceDefinition
         {
             Name = "svc-upper-any",
             Protocol = "ANY",
@@ -50,6 +50,6 @@ public sealed class ServiceValueParserTests
             Kind = null
         };
 
-        Assert.Throws<FormatException>(() => ServiceValueParser.NormalizeObject(serviceObject));
+        Assert.Throws<FormatException>(() => ServiceValueParser.NormalizeDefinition(serviceDefinition));
     }
 }

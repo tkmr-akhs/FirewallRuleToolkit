@@ -11,9 +11,9 @@ public sealed class StatUseCaseTests
 
         var exitCode = ExecuteStat(
             securityPolicyCount: 10,
-            addressObjectCount: 20,
+            addressDefinitionCount: 20,
             addressGroupCount: 30,
-            serviceObjectCount: 40,
+            serviceDefinitionCount: 40,
             serviceGroupCount: 50,
             atomicPolicyCount: 60,
             mergedPolicyCount: 70,
@@ -103,9 +103,9 @@ public sealed class StatUseCaseTests
 
     private static int ExecuteStat(
         int securityPolicyCount,
-        int addressObjectCount,
+        int addressDefinitionCount,
         int addressGroupCount,
-        int serviceObjectCount,
+        int serviceDefinitionCount,
         int serviceGroupCount,
         int atomicPolicyCount,
         int mergedPolicyCount,
@@ -113,9 +113,9 @@ public sealed class StatUseCaseTests
     {
         return StatUseCase.Execute(
             new TestItemCountRepository(securityPolicyCount),
-            new TestItemCountRepository(addressObjectCount),
+            new TestItemCountRepository(addressDefinitionCount),
             new TestItemCountRepository(addressGroupCount),
-            new TestItemCountRepository(serviceObjectCount),
+            new TestItemCountRepository(serviceDefinitionCount),
             new TestItemCountRepository(serviceGroupCount),
             new TestItemCountRepository(atomicPolicyCount),
             new TestItemCountRepository(mergedPolicyCount),

@@ -41,17 +41,17 @@ internal sealed class SecurityPolicyAtomizer
         ArgumentNullException.ThrowIfNull(policy);
 
         // 送信元アドレス範囲の配列
-        var sourceAddressRanges = AddressObjectExpander
+        var sourceAddressRanges = ResolvedAddressExpander
             .Expand(policy.SourceAddresses, threshold)
             .ToArray();
 
         // 宛先アドレスの配列
-        var destinationAddressRanges = AddressObjectExpander
+        var destinationAddressRanges = ResolvedAddressExpander
             .Expand(policy.DestinationAddresses, threshold)
             .ToArray();
 
         // サービスの配列
-        var serviceRanges = ServiceObjectExpander
+        var serviceRanges = ResolvedServiceExpander
             .Expand(policy.Services, threshold)
             .ToArray();
 

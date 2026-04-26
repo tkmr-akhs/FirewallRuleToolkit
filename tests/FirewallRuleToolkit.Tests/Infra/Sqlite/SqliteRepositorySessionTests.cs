@@ -21,9 +21,9 @@ public sealed class SqliteRepositorySessionTests
 
             using (var writeSession = sessionFactory.BeginWriteSession())
             {
-                writeSession.AddressObjects.ReplaceAll(
+                writeSession.AddressDefinitions.ReplaceAll(
                 [
-                    new AddressObject
+                    new AddressDefinition
                     {
                         Name = "host-a",
                         Value = "192.168.1.10/32"
@@ -45,7 +45,7 @@ public sealed class SqliteRepositorySessionTests
 
             var databasePath = Path.Combine(databaseDirectory, SqliteDatabaseLayout.DatabaseFileName);
             Assert.True(File.Exists(databasePath));
-            Assert.Equal(["host-a"], new SqliteAddressObjectRepository(databaseDirectory).GetAll().Select(static item => item.Name));
+            Assert.Equal(["host-a"], new SqliteAddressDefinitionRepository(databaseDirectory).GetAll().Select(static item => item.Name));
             Assert.Equal(["src-group"], new SqliteAddressGroupRepository(databaseDirectory).GetAll().Select(static item => item.GroupName));
             Assert.Equal(["allow-web"], new SqliteImportedSecurityPolicyRepository(databaseDirectory).GetAll().Select(static item => item.Name));
             var metadata = new SqliteToolMetadataRepository(databaseDirectory);
@@ -69,9 +69,9 @@ public sealed class SqliteRepositorySessionTests
 
             using (var writeSession = sessionFactory.BeginWriteSession())
             {
-                writeSession.AddressObjects.ReplaceAll(
+                writeSession.AddressDefinitions.ReplaceAll(
                 [
-                    new AddressObject
+                    new AddressDefinition
                     {
                         Name = "host-a",
                         Value = "192.168.1.10/32"
@@ -81,7 +81,7 @@ public sealed class SqliteRepositorySessionTests
                 writeSession.ToolMetadata.SetAtomizeThreshold(7);
             }
 
-            Assert.Throws<RepositoryUnavailableException>(new SqliteAddressObjectRepository(databaseDirectory).EnsureAvailable);
+            Assert.Throws<RepositoryUnavailableException>(new SqliteAddressDefinitionRepository(databaseDirectory).EnsureAvailable);
             Assert.Throws<RepositoryUnavailableException>(new SqliteImportedSecurityPolicyRepository(databaseDirectory).EnsureAvailable);
             Assert.False(new SqliteToolMetadataRepository(databaseDirectory).TryGetAtomizeThreshold(out _));
         }
@@ -98,10 +98,10 @@ public sealed class SqliteRepositorySessionTests
 
         try
         {
-            var publishedRepository = new SqliteAddressObjectRepository(databaseDirectory);
+            var publishedRepository = new SqliteAddressDefinitionRepository(databaseDirectory);
             publishedRepository.ReplaceAll(
             [
-                new AddressObject
+                new AddressDefinition
                 {
                     Name = "published",
                     Value = "192.168.1.10/32"
@@ -112,9 +112,9 @@ public sealed class SqliteRepositorySessionTests
 
             using (var writeSession = sessionFactory.BeginWriteSession())
             {
-                writeSession.AddressObjects.ReplaceAll(
+                writeSession.AddressDefinitions.ReplaceAll(
                 [
-                    new AddressObject
+                    new AddressDefinition
                     {
                         Name = "pending",
                         Value = "192.168.1.20/32"
@@ -137,7 +137,7 @@ public sealed class SqliteRepositorySessionTests
 
         try
         {
-            CreateAddressObjectDatabaseInRollbackJournalMode(databaseDirectory);
+            CreateAddressDefinitionDatabaseInRollbackJournalMode(databaseDirectory);
 
             IWriteRepositorySessionFactory sessionFactory = new SqliteRepositorySessionFactory(databaseDirectory);
 
@@ -160,14 +160,14 @@ public sealed class SqliteRepositorySessionTests
 
         try
         {
-            CreateAddressObjectDatabaseInRollbackJournalMode(databaseDirectory);
+            CreateAddressDefinitionDatabaseInRollbackJournalMode(databaseDirectory);
             IWriteRepositorySessionFactory sessionFactory = new SqliteRepositorySessionFactory(databaseDirectory);
 
             using var writeSession = sessionFactory.BeginWriteSession();
             writeSession.AtomicPolicies.Initialize();
             writeSession.AtomicPolicies.AppendRange([CreateAtomicPolicy(10, "pending")]);
 
-            var values = new SqliteAddressObjectRepository(databaseDirectory)
+            var values = new SqliteAddressDefinitionRepository(databaseDirectory)
                 .GetAll()
                 .Select(static item => item.Value)
                 .ToArray();
@@ -386,7 +386,7 @@ public sealed class SqliteRepositorySessionTests
         command.ExecuteNonQuery();
     }
 
-    private static void CreateAddressObjectDatabaseInRollbackJournalMode(string databaseDirectory)
+    private static void CreateAddressDefinitionDatabaseInRollbackJournalMode(string databaseDirectory)
     {
         Directory.CreateDirectory(databaseDirectory);
         var databasePath = Path.Combine(databaseDirectory, SqliteDatabaseLayout.DatabaseFileName);
@@ -403,16 +403,16 @@ public sealed class SqliteRepositorySessionTests
         using (var createCommand = connection.CreateCommand())
         {
             createCommand.CommandText =
-                "CREATE TABLE " + SqliteDatabaseLayout.AddressObjects.TableName + " (" +
-                SqliteDatabaseLayout.AddressObjects.NameColumn + " TEXT NOT NULL PRIMARY KEY, " +
-                SqliteDatabaseLayout.AddressObjects.ValueColumn + " TEXT NOT NULL);";
+                "CREATE TABLE " + SqliteDatabaseLayout.AddressDefinitions.TableName + " (" +
+                SqliteDatabaseLayout.AddressDefinitions.NameColumn + " TEXT NOT NULL PRIMARY KEY, " +
+                SqliteDatabaseLayout.AddressDefinitions.ValueColumn + " TEXT NOT NULL);";
             createCommand.ExecuteNonQuery();
         }
 
         using var insertCommand = connection.CreateCommand();
         insertCommand.CommandText =
-            "INSERT INTO " + SqliteDatabaseLayout.AddressObjects.TableName +
-            "(" + SqliteDatabaseLayout.AddressObjects.NameColumn + ", " + SqliteDatabaseLayout.AddressObjects.ValueColumn + ") " +
+            "INSERT INTO " + SqliteDatabaseLayout.AddressDefinitions.TableName +
+            "(" + SqliteDatabaseLayout.AddressDefinitions.NameColumn + ", " + SqliteDatabaseLayout.AddressDefinitions.ValueColumn + ") " +
             "VALUES ($name, $value);";
         insertCommand.Parameters.AddWithValue("$name", "host-a");
         insertCommand.Parameters.AddWithValue("$value", "192.168.1.10/32");

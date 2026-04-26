@@ -3,19 +3,19 @@
 namespace FirewallRuleToolkit.Infra.Csv.PaloAlto;
 
 /// <summary>
-/// PaloAlto 機器用 サービス オブジェクト CSV を読み取ります。
+/// PaloAlto 機器用サービス定義 CSV を読み取ります。
 /// </summary>
-public sealed class PaloAltoServiceObjectCsvReader : IReadRepository<ServiceObject>
+public sealed class PaloAltoServiceDefinitionCsvReader : IReadRepository<ServiceDefinition>
 {
     private readonly string path;
     private readonly CsvOptions options;
 
     /// <summary>
-    /// PaloAlto 機器用 サービス オブジェクト CSV を読み取りするクラスのコンストラクターです。
+    /// PaloAlto 機器用サービス定義 CSV を読み取りするクラスのコンストラクターです。
     /// </summary>
     /// <param name="path">CSV ファイル パス。</param>
     /// <param name="options">CSV オプション。</param>
-    public PaloAltoServiceObjectCsvReader(string path, CsvOptions? options = null)
+    public PaloAltoServiceDefinitionCsvReader(string path, CsvOptions? options = null)
     {
         this.path = path ?? throw new ArgumentNullException(nameof(path));
         this.options = options ?? new CsvOptions();
@@ -28,40 +28,40 @@ public sealed class PaloAltoServiceObjectCsvReader : IReadRepository<ServiceObje
     {
         if (!File.Exists(path))
         {
-            throw new RepositoryUnavailableException($"Service objects csv is unavailable. path: {path}");
+            throw new RepositoryUnavailableException($"Service definitions csv is unavailable. path: {path}");
         }
     }
 
     /// <summary>
-    /// サービス オブジェクトを列挙します。
+    /// 名前付きサービス定義を列挙します。
     /// </summary>
-    /// <returns>サービス オブジェクトの列挙。</returns>
-    public IEnumerable<ServiceObject> GetAll()
+    /// <returns>名前付きサービス定義の列挙。</returns>
+    public IEnumerable<ServiceDefinition> GetAll()
     {
         foreach (var row in CsvRepositoryHelper.ReadRowsWithRecordNumbers(path, options))
         {
-            ServiceObject serviceObject;
+            ServiceDefinition serviceDefinition;
             try
             {
-                serviceObject = CreateServiceObject(row.Values);
+                serviceDefinition = CreateServiceDefinition(row.Values);
             }
             catch (Exception ex) when (CsvRepositoryHelper.IsReadExceptionCause(ex))
             {
                 throw CsvRepositoryHelper.CreateReadException(path, row.RecordNumber, ex);
             }
 
-            yield return serviceObject;
+            yield return serviceDefinition;
         }
     }
 
-    private static ServiceObject CreateServiceObject(IReadOnlyDictionary<string, string> row)
+    private static ServiceDefinition CreateServiceDefinition(IReadOnlyDictionary<string, string> row)
     {
-        return new ServiceObject
+        return new ServiceDefinition
         {
-            Name = CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoServiceObjects.NameHeader),
-            Protocol = NormalizeProtocol(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoServiceObjects.ProtocolHeader)),
-            SourcePort = NormalizePortValue(GetRequiredOrDefault(row, CsvDatabaseLayout.PaloAltoServiceObjects.SourcePortHeader, "any")),
-            DestinationPort = NormalizePortValue(GetRequiredOrDefault(row, CsvDatabaseLayout.PaloAltoServiceObjects.DestinationPortHeader, "any")),
+            Name = CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoServiceDefinitions.NameHeader),
+            Protocol = NormalizeProtocol(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoServiceDefinitions.ProtocolHeader)),
+            SourcePort = NormalizePortValue(GetRequiredOrDefault(row, CsvDatabaseLayout.PaloAltoServiceDefinitions.SourcePortHeader, "any")),
+            DestinationPort = NormalizePortValue(GetRequiredOrDefault(row, CsvDatabaseLayout.PaloAltoServiceDefinitions.DestinationPortHeader, "any")),
             Kind = null
         };
     }

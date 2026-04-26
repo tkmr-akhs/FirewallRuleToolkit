@@ -29,7 +29,7 @@ public sealed class PaloAltoCsvReadersTests
 
         try
         {
-            var reader = new PaloAltoAddressObjectCsvReader(path);
+            var reader = new PaloAltoAddressDefinitionCsvReader(path);
 
             var objects = reader.GetAll().ToArray();
 
@@ -61,7 +61,7 @@ public sealed class PaloAltoCsvReadersTests
 
         try
         {
-            var reader = new PaloAltoServiceObjectCsvReader(path);
+            var reader = new PaloAltoServiceDefinitionCsvReader(path);
 
             var objects = reader.GetAll().ToArray();
 

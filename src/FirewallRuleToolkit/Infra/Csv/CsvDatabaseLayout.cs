@@ -63,7 +63,7 @@ internal static class CsvDatabaseLayout
         ];
     }
 
-    public static class PaloAltoAddressObjects
+    public static class PaloAltoAddressDefinitions
     {
         public const string NameHeader = "名前";
         public const string AddressHeader = "アドレス";
@@ -75,7 +75,7 @@ internal static class CsvDatabaseLayout
         public const string AddressHeader = "アドレス";
     }
 
-    public static class PaloAltoServiceObjects
+    public static class PaloAltoServiceDefinitions
     {
         public const string NameHeader = "名前";
         public const string ProtocolHeader = "プロトコル";
