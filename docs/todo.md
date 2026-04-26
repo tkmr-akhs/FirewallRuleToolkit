@@ -15,13 +15,34 @@
 
 ## 高優先度
 
-- [ ] [spec] application 値を正規化する。
-  - application の `any` / 大文字小文字差分を Domain value object として正規化するか決める。
-  - 方針案: application の意味モデルを固定する。
+- [ ] [ref] 正規化処理の責務を整理する。
+  - `SecurityPolicyAtomizer`、`SecurityPolicyMerger`、各 repository / exporter に類似の normalize / distinct / sort が分散している。
+  - 方針案: Domain value object の正規化、不変条件、表示順を分けて責務を明確にする。
 
-- [ ] [spec] application 値の統合方針を整理する。
-  - merge は application 差分をまたいで統合しないため、サービス統合後もルールが残るケースがある。
-  - 方針案: application 差分を統合対象にするか仕様として明示する。
+- [ ] [ref] Domain runner と UseCase の責務境界を整理する。
+  - `SecurityPolicyAtomizeRunner` / `SecurityPolicyMergeRunner` / `SecurityPolicyTestRunner` が進捗間隔、スキップ扱い、repository 追記 callback、実行件数集計を持っており、Domain service がバッチ実行手順まで知っている。
+  - `SecurityPolicyAtomizer` / `SecurityPolicyMerger` / containment / test 判定の純粋な業務ロジックと、App 側の transaction / progress / warning policy を分けたい。
+  - 方針案: Domain は変換・判定結果と diagnostic value を返し、UseCase が列挙、書き込み、進捗、ログ変換を担当する。
+
+- [ ] [ref] address / service / application の集合演算 API を Domain に集約する。
+  - containment は `SecurityPolicyContainment`、差分/和集合は `HighSimilarityPolicyRecomposer`、CIDR 判定や表示用変換は exporter 側に分散している。
+  - 方針案: `AddressRangeSet` / `ServiceConditionSet` / `ApplicationSet` などに contains / union / intersect / subtract / format 用の明示的な責務境界を持たせる。
+
+- [ ] [ux] merged service export のプロトコル範囲表記を整理する。
+  - `CsvMergedSecurityPolicyWriter` はプロトコル範囲の両端をプロトコル名へ変換するため、`1-17` が `icmp-udp` のような表記になり得る。
+  - `ServiceValueParser` の直指定サービス parser はプロトコル名を範囲端点として扱わないため、レビュー用としても再利用用としても意味が読み取りづらい。
+  - 方針案: 範囲は数値表記に固定し、プロトコル名は単一値だけに使う。
+
+- [ ] [ux] merged export の address / service 表示順を安定化する。
+  - セット由来の値が出力される場合、差分レビューでノイズになる可能性がある。
+  - 方針案: Domain の canonical order と exporter の表示順を定義する。
+
+- [ ] [bug] `merged` の読み出し順と first-hit 検証順を揃える。
+  - `SecurityPolicyTestRunner` は `MinimumIndex`、`MaximumIndex` の順で first-hit を選ぶ一方、`SqliteMergedSecurityPolicyRepository.GetAll()` は `MinimumIndex`、`rowid` の順で返す。
+  - 同じ `MinimumIndex` を持つ merged が複数ある場合、`test` の判定順と export CSV の表示・適用順がずれる可能性がある。
+  - 方針案: merged policy の canonical order を Domain 側で定義し、repository / exporter / test で共有する。
+
+## 中優先度
 
 - [ ] [spec] 高一致率再編成の集合演算モデルを整理する。
   - `HighSimilarityPolicyRecomposer` が文字列集合の完全一致を中心に扱っており、CIDR / IP range の包含関係を活かせていない。
@@ -34,8 +55,6 @@
   - 現在は atomic から見て merged が見つかるかを中心に確認しており、merged に余計な許可が混入した場合を検出しづらい。
   - first-hit の比較も、「後続に同じ動作のルールがある」だけではなく、元と merged の最初に一致するルール同士を比較する必要がある。
   - 方針案: atomic -> merged と merged -> atomic の双方向 containment と、first-hit equivalence を分けて検証する。
-
-## 中優先度
 
 - [ ] [req] `import` / `atomize` で条件軸が空になりうる。
   - 空の source / destination / service / application は atomize 結果を 0 件にし、ルール欠落につながる。
@@ -72,15 +91,6 @@
   - サービス定義の空 source / destination port は現状 `any` に補完されるため、protocol ごとに許容する空値とエラーにする空値を分けたい。
   - 方針案: import validation report を導入し、repository 保存前に検証する。
 
-- [ ] [ux] merged export の address / service 表示順を安定化する。
-  - セット由来の値が出力される場合、差分レビューでノイズになる可能性がある。
-  - 方針案: Domain の canonical order と exporter の表示順を定義する。
-
-- [ ] [bug] `merged` の読み出し順と first-hit 検証順を揃える。
-  - `SecurityPolicyTestRunner` は `MinimumIndex`、`MaximumIndex` の順で first-hit を選ぶ一方、`SqliteMergedSecurityPolicyRepository.GetAll()` は `MinimumIndex`、`rowid` の順で返す。
-  - 同じ `MinimumIndex` を持つ merged が複数ある場合、`test` の判定順と export CSV の表示・適用順がずれる可能性がある。
-  - 方針案: merged policy の canonical order を Domain 側で定義し、repository / exporter / test で共有する。
-
 - [ ] [ux] shadowed rules report を出す。
   - merge / test の過程で検出した shadowed rule をユーザーが確認できる形にする。
   - 方針案: `stat` または dedicated report command で出力する。
@@ -93,10 +103,6 @@
   - 現在の `SecurityPolicyMergeRunResult.ActionRangeOverlap` は action と最小/最大 index だけを持つため、どの merged rule / 元ポリシー名 / 条件が衝突したかをログから追いにくい。
   - 方針案: overlap 判定用の結果に `OriginalPolicyNames`、`GroupId`、代表条件、merged の識別子を含めるか、詳細レポートへ出力する。
 
-- [ ] [ux] merged service export のプロトコル範囲表記を整理する。
-  - `CsvMergedSecurityPolicyWriter` はプロトコル範囲の両端をプロトコル名へ変換するため、`1-17` が `icmp-udp` のような表記になり得る。
-  - `ServiceValueParser` の直指定サービス parser はプロトコル名を範囲端点として扱わないため、レビュー用としても再利用用としても意味が読み取りづらい。
-  - 方針案: 範囲は数値表記に固定し、プロトコル名は単一値だけに使う。
 
 ## 低優先度
 
@@ -147,11 +153,6 @@
   - CLI 引数の互換変換と parse 前処理が増えると、System.CommandLine との境界が曖昧になる。
   - 方針案: legacy alias 変換、既定値、parse error を分ける。
 
-- [ ] [spec] 予約語 `any` とユーザー定義名の優先順位・大文字小文字規約を整理する。
-  - address / service resolver は小文字 `any` を名前付き object / group より先に組み込み値として扱うため、同名 object / group は参照できない。
-  - `ANY` は address では未解決値として後段エラーになり、service 参照では `Kind` になり、サービス定義内の port `ANY` は `any` として正規化され、application containment では case-insensitive に扱われる。
-  - 方針案: Palo Alto 予約語は case-insensitive にするのか、object / group 名は case-sensitive に残すのか、予約語名の object / group を拒否するのかを仕様化する。
-
 - [ ] [spec] service `any` と `Kind` 指定の包含関係を整理する
   - `any` service は `Kind = null`、`application-default` などは `Kind` 指定として扱われます。
   - containment や merge partition が `Kind` を厳密に見るため、期待する「any がすべてを含む」動きとずれる可能性があります。
@@ -179,22 +180,9 @@
   - 「partition」という名前だけだと、業務上の整理単位、shadow 判定範囲、統合可否条件が同じ概念に見えやすい。
   - 方針案: `MergeStreamPartitionKey` / `MergeEligibilitySignature` などへ分け、処理フェーズごとの境界を明文化する。
 
-- [ ] [ref] Domain runner と UseCase の責務境界を整理する。
-  - `SecurityPolicyAtomizeRunner` / `SecurityPolicyMergeRunner` / `SecurityPolicyTestRunner` が進捗間隔、スキップ扱い、repository 追記 callback、実行件数集計を持っており、Domain service がバッチ実行手順まで知っている。
-  - `SecurityPolicyAtomizer` / `SecurityPolicyMerger` / containment / test 判定の純粋な業務ロジックと、App 側の transaction / progress / warning policy を分けたい。
-  - 方針案: Domain は変換・判定結果と diagnostic value を返し、UseCase が列挙、書き込み、進捗、ログ変換を担当する。
-
-- [ ] [ref] 正規化処理の責務を整理する。
-  - `SecurityPolicyAtomizer`、`SecurityPolicyMerger`、各 repository / exporter に類似の normalize / distinct / sort が分散している。
-  - 方針案: Domain value object の正規化、不変条件、表示順を分けて責務を明確にする。
-
 - [ ] [ref] policy condition collection の不変条件を Domain 型で表現する。
   - `ImportedSecurityPolicy` / `ResolvedSecurityPolicy` / `MergedSecurityPolicy` が zone / address / application / service の集合を生の list / set として持つため、空集合、空白値、重複、順序依存の扱いが各処理へ散っている。
   - 方針案: `PolicyConditionSet` や `NonEmptyConditionSet<T>` のような型を導入し、空禁止、正規化、canonical order、比較規約を集約する。
-
-- [ ] [ref] address / service / application の集合演算 API を Domain に集約する。
-  - containment は `SecurityPolicyContainment`、差分/和集合は `HighSimilarityPolicyRecomposer`、CIDR 判定や表示用変換は exporter 側に分散している。
-  - 方針案: `AddressRangeSet` / `ServiceConditionSet` / `ApplicationSet` などに contains / union / intersect / subtract / format 用の明示的な責務境界を持たせる。
 
 - [ ] [ref] `ResolvedAddress` / `ResolvedService` の役割と名前を整理する。
   - 実際には「解決済み」だけでなく、名前表示・値集合・元参照の混合表現になっている。
@@ -279,10 +267,6 @@
   - `SecurityPolicyTester.Test` は実際には atomic 1 件が最初に含まれる merged を探す片方向 containment check であり、`test` コマンド全体の意味より狭い。
   - 内側の `SecurityPolicyTester.TestResult` が外側の `SecurityPolicyTestRunner.FindingKind` に依存しており、責務の向きが読み取りづらい。
   - 方針案: `MergedPolicyCoverageChecker` など照合内容を表す名前へ寄せ、finding/result の value object を runner から独立させる。
-
-- [ ] [ref] `AtomicMergeCandidateDeduplicator` の名前を実処理に合わせる。
-  - 実際には完全重複だけでなく、包含される Allow 候補を取り除いてトレース情報を生存側へ吸収している。
-  - 方針案: `AtomicMergeCandidatePruner` / `ContainedAllowCandidateReducer` など、containment pruning を表す名前へ寄せる。
 
 - [ ] [test] `merge` / `test` の大規模 partition 性能を測定する。
   - containment 判定や group compaction が入力サイズに対してどの程度伸びるか不明。
@@ -378,3 +362,28 @@
   - 統合結果がパス順に依存し、どこまで最小化する処理なのか仕様から読み取りづらい。
   - 方針案: fixed-point まで繰り返すか、意図的なヒューリスティックとしてパス順と再評価しない範囲を仕様・テストで固定する。
   - 結論: 論理的に「destination address 統合後に service だけが異なる候補同士など、意味上はさらに統合できるルールが残る可能性」というものはありえない。そのため、残差再評価の話と完全に重複する。
+
+- [x] [ref] `AtomicMergeCandidateDeduplicator` の名前を実処理に合わせる。
+  - 実際には完全重複だけでなく、包含される Allow 候補を取り除いてトレース情報を生存側へ吸収している。
+  - 方針案: `AtomicMergeCandidatePruner` / `ContainedAllowCandidateReducer` など、containment pruning を表す名前へ寄せる。
+  - 結論: 現在の名前で問題ない。
+
+## 対応済み事項
+
+### 高優先度だったもの
+
+- [x] [spec] 予約語 `any` とユーザー定義名の優先順位・大文字小文字規約を整理する。
+  - address / service resolver は小文字 `any` を名前付き object / group より先に組み込み値として扱うため、同名 object / group は参照できない。
+  - `ANY` は address では未解決値として後段エラーになり、service 参照では `Kind` になり、サービス定義内の port `ANY` は `any` として正規化され、application containment では case-insensitive に扱われる。
+  - 対応内容: 「名前が混在しうる箇所は case-sensitive、値だけの軸は必要に応じて内部処理用に正規化する」旨、仕様として明記した。
+  - 補足: address object の値に `any` は存在しない前提とし、service 定義 protocol の `ANY` は許可しない。
+
+- [x] [spec] application 値を正規化する。
+  - application の `any` / 大文字小文字差分を Domain value object として正規化するか決める。
+  - 対応内容: 「application 値は製品・環境ごとの識別子として入力表記を保持し、正規化しない。」旨、仕様として明記した。
+  - 補足: `any` の特別扱いは containment 判定など必要な箇所に限定し、保存値や表示値は勝手に書き換えない。
+
+- [x] [spec] application 値の統合方針を整理する。
+  - merge は application 差分をまたいで統合しないため、サービス統合後もルールが残るケースがある。
+  - 対応内容: 「application は製品・環境ごとの意味を持つ条件軸として扱い、異なる application 値をまたいだ統合対象にはしない。」旨、仕様として明記した。
+  - 補足: `any` が個別 application を包含する判定は shadow / containment のために使うが、merged rule の application 集合を広げる目的では使わない。

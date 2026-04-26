@@ -406,19 +406,20 @@ public static class ServiceValueParser
     }
 
     /// <summary>
-    /// プロトコル名または番号を IP プロトコル番号へ解決します。
+    /// 小文字のプロトコル名または番号を IP プロトコル番号へ解決します。
     /// </summary>
-    /// <param name="protocol">プロトコル名または番号。</param>
+    /// <param name="protocol">小文字のプロトコル名または番号。</param>
     /// <returns>IP プロトコル番号。</returns>
     private static int ResolveProtocolNumber(string protocol)
     {
-        return protocol.Trim().ToUpperInvariant() switch
+        var trimmed = protocol.Trim();
+        return trimmed switch
         {
-            "TCP" => 6,
-            "UDP" => 17,
-            "ICMP" => 1,
-            "SCTP" => 132,
-            _ => int.TryParse(protocol, out var numericProtocol)
+            "tcp" => 6,
+            "udp" => 17,
+            "icmp" => 1,
+            "sctp" => 132,
+            _ => int.TryParse(trimmed, out var numericProtocol)
                 ? numericProtocol
                 : throw new FormatException($"Unsupported protocol: {protocol}")
         };

@@ -32,7 +32,7 @@ public sealed class ServiceReferenceResolverTests
             }),
             new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
             {
-                ["bundle"] = ["svc-web", "UDP 1-65535 53", "svc-app-default"]
+                ["bundle"] = ["svc-web", "udp 1-65535 53", "svc-app-default"]
             }));
 
         var resolved = resolver.Resolve(["bundle"]).ToArray();
@@ -69,7 +69,7 @@ public sealed class ServiceReferenceResolverTests
             new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)),
             new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
 
-        var resolved = resolver.Resolve(["TCP any 80-90"]).Single();
+        var resolved = resolver.Resolve(["tcp any 80-90"]).Single();
 
         Assert.Equal("6", resolved.Protocol);
         Assert.Equal("1-65535", resolved.SourcePort);
@@ -115,12 +115,27 @@ public sealed class ServiceReferenceResolverTests
             new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)),
             new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
 
-        var resolved = resolver.Resolve(["TCP ANY 80"]).Single();
+        var resolved = resolver.Resolve(["tcp ANY 80"]).Single();
 
         Assert.Equal("255", resolved.Protocol);
         Assert.Equal("0", resolved.SourcePort);
         Assert.Equal("0", resolved.DestinationPort);
-        Assert.Equal("TCP ANY 80", resolved.Kind);
+        Assert.Equal("tcp ANY 80", resolved.Kind);
+    }
+
+    [Fact]
+    public void Resolve_DirectService_WhenProtocolAliasCaseDiffers_FallsBackToKind()
+    {
+        var resolver = new ServiceReferenceResolver(
+            new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)),
+            new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
+
+        var resolved = resolver.Resolve(["TCP any 80"]).Single();
+
+        Assert.Equal("255", resolved.Protocol);
+        Assert.Equal("0", resolved.SourcePort);
+        Assert.Equal("0", resolved.DestinationPort);
+        Assert.Equal("TCP any 80", resolved.Kind);
     }
 
     [Fact]
