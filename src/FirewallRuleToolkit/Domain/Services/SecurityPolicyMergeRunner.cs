@@ -55,6 +55,10 @@ internal sealed class SecurityPolicyMergeRunner
     /// <summary>
     /// 入力ポリシー群を処理し、merged 出力を追記します。
     /// </summary>
+    /// <remarks>
+    /// このメソッドは入力列を並び替えず、同一 merge パーティションが連続しているかも検証しません。
+    /// 同じパーティションが途中で分断されると別パーティションとして処理され、shadow 判定や merge 結果が変わります。
+    /// </remarks>
     /// <param name="atomicPoliciesOrderedForMerge">`FromZone`、`ToZone`、`Service.Kind`、`OriginalIndex` の順で並び、同じ merge パーティションが連続するよう整列された Atomic ポリシー列。</param>
     /// <param name="appendMergedPolicies">merged ポリシーの追記先。</param>
     /// <param name="reportProgress">Atomic 処理進捗の通知先。</param>

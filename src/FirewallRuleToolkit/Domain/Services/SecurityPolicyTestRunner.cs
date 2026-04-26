@@ -72,7 +72,11 @@ internal sealed class SecurityPolicyTestRunner
     /// <summary>
     /// merge 用順序の Atomic 列と merged 列を検査します。
     /// </summary>
-    /// <param name="atomicPoliciesOrderedForMerge">merge 用順序の Atomic ポリシー列。</param>
+    /// <remarks>
+    /// shadowed 分類は merge と同じパーティション前提で行うため、入力列は同一 merge パーティションが連続する順序である必要があります。
+    /// このメソッドは入力列を並び替えず、順序契約違反も検出しません。
+    /// </remarks>
+    /// <param name="atomicPoliciesOrderedForMerge">`FromZone`、`ToZone`、`Service.Kind`、`OriginalIndex` の順で並び、同じ merge パーティションが連続するよう整列された Atomic ポリシー列。</param>
     /// <param name="mergedPolicies">検査対象の merged ポリシー列。</param>
     /// <param name="reportFinding">不一致報告先。</param>
     /// <param name="reportProgress">進捗通知先。</param>
@@ -154,7 +158,7 @@ internal sealed class SecurityPolicyTestRunner
     /// <summary>
     /// Atomic 列を shadowed / 非 shadowed に分類します。
     /// </summary>
-    /// <param name="atomicPoliciesOrderedForMerge">merge 用順序の Atomic ポリシー列。</param>
+    /// <param name="atomicPoliciesOrderedForMerge">`FromZone`、`ToZone`、`Service.Kind`、`OriginalIndex` の順で並び、同じ merge パーティションが連続するよう整列された Atomic ポリシー列。</param>
     /// <returns>分類結果。</returns>
     private static IEnumerable<AtomicPolicyClassification> ClassifyAtomicPolicies(
         IEnumerable<AtomicSecurityPolicy> atomicPoliciesOrderedForMerge)

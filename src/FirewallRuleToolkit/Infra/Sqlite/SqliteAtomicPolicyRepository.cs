@@ -120,7 +120,7 @@ public sealed class SqliteAtomicPolicyRepository : SqliteReadWriteRepositoryBase
     /// <summary>
     /// merge 処理に適した順序で原子的なセキュリティ ポリシーを取得します。
     /// </summary>
-    /// <returns>並び替え済みの原子的なセキュリティ ポリシー列。</returns>
+    /// <returns>`FromZone`、`ToZone`、`Service.Kind`、`OriginalIndex`、保存順の順に整列された原子的なセキュリティ ポリシー列。</returns>
     public IEnumerable<AtomicSecurityPolicy> GetAllOrderedForMerge()
     {
         using var connection = SqliteRepositoryHelper.OpenConnection(DatabasePath);

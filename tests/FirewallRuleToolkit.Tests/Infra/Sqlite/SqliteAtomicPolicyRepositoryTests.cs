@@ -109,13 +109,60 @@ public sealed class SqliteAtomicPolicyRepositoryTests
         }
     }
 
-    private static AtomicSecurityPolicy CreateAtomicPolicy(uint originalIndex, string originalPolicyName)
+    [Fact]
+    public void GetAllOrderedForMerge_OrdersByMergePartitionOriginalIndexAndStorageOrder()
+    {
+        var databaseDirectory = CreateTempDatabaseDirectory();
+
+        try
+        {
+            var repository = new SqliteAtomicPolicyRepository(databaseDirectory);
+            repository.ReplaceAll(
+            [
+                CreateAtomicPolicy(30, "trust-b-untrust-kind-b", fromZone: "trust-b", serviceKind: "kind-b"),
+                CreateAtomicPolicy(20, "trust-untrust-kind-b", serviceKind: "kind-b"),
+                CreateAtomicPolicy(30, "trust-untrust-kind-a-late", serviceKind: "kind-a"),
+                CreateAtomicPolicy(10, "trust-untrust-kind-a-first", serviceKind: "kind-a"),
+                CreateAtomicPolicy(10, "trust-untrust-kind-a-second", serviceKind: "kind-a"),
+                CreateAtomicPolicy(5, "dmz-untrust-kind-a", fromZone: "dmz", serviceKind: "kind-a"),
+                CreateAtomicPolicy(1, "trust-dmz-kind-a", toZone: "dmz", serviceKind: "kind-a")
+            ]);
+
+            var orderedNames = repository
+                .GetAllOrderedForMerge()
+                .Select(static policy => policy.OriginalPolicyName)
+                .ToArray();
+
+            Assert.Equal(
+            [
+                "dmz-untrust-kind-a",
+                "trust-dmz-kind-a",
+                "trust-untrust-kind-a-first",
+                "trust-untrust-kind-a-second",
+                "trust-untrust-kind-a-late",
+                "trust-untrust-kind-b",
+                "trust-b-untrust-kind-b"
+            ],
+            orderedNames);
+        }
+        finally
+        {
+            DeleteDatabaseDirectory(databaseDirectory);
+        }
+    }
+
+    private static AtomicSecurityPolicy CreateAtomicPolicy(
+        uint originalIndex,
+        string originalPolicyName,
+        string fromZone = "trust",
+        string toZone = "untrust",
+        string? serviceKind = "service")
     {
         return new AtomicSecurityPolicy
         {
-            FromZone = "trust",
+            FromZone = fromZone,
             SourceAddress = new AddressValue { Start = 1, Finish = 1 },
-            ToZone = "untrust",
+            ToZone = toZone,
             DestinationAddress = new AddressValue { Start = 2, Finish = 2 },
             Application = "any",
             Service = new ServiceValue
@@ -126,7 +173,7 @@ public sealed class SqliteAtomicPolicyRepositoryTests
                 SourcePortFinish = 65535,
                 DestinationPortStart = 80,
                 DestinationPortFinish = 80,
-                Kind = "service"
+                Kind = serviceKind
             },
             Action = SecurityPolicyAction.Allow,
             GroupId = "group-a",
