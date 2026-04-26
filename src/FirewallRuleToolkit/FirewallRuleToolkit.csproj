@@ -7,6 +7,8 @@
     <Nullable>enable</Nullable>
     <AssemblyName>fwrule-tool</AssemblyName>
     <RootNamespace>FirewallRuleToolkit</RootNamespace>
+    <Version>1.0.0</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
@@ -33,5 +35,20 @@
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </None>
   </ItemGroup>
+
+  <Target Name="SetInformationalVersionFromGit" BeforeTargets="GetAssemblyAttributes">
+    <Exec Command="git rev-parse --short=12 HEAD"
+          ConsoleToMSBuild="true"
+          IgnoreExitCode="true"
+          StandardOutputImportance="Low"
+          StandardErrorImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitCommitId" />
+      <Output TaskParameter="ExitCode" PropertyName="GitCommitExitCode" />
+    </Exec>
+
+    <PropertyGroup Condition="'$(GitCommitExitCode)' == '0' and '$(GitCommitId)' != ''">
+      <InformationalVersion>$(Version)+$(GitCommitId)</InformationalVersion>
+    </PropertyGroup>
+  </Target>
 
 </Project>
