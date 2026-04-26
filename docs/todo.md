@@ -15,10 +15,6 @@
 
 ## 高優先度
 
-- [ ] [ref] 正規化処理の責務を整理する。
-  - `SecurityPolicyAtomizer`、`SecurityPolicyMerger`、各 repository / exporter に類似の normalize / distinct / sort が分散している。
-  - 方針案: Domain value object の正規化、不変条件、表示順を分けて責務を明確にする。
-
 - [ ] [ref] Domain runner と UseCase の責務境界を整理する。
   - `SecurityPolicyAtomizeRunner` / `SecurityPolicyMergeRunner` / `SecurityPolicyTestRunner` が進捗間隔、スキップ扱い、repository 追記 callback、実行件数集計を持っており、Domain service がバッチ実行手順まで知っている。
   - `SecurityPolicyAtomizer` / `SecurityPolicyMerger` / containment / test 判定の純粋な業務ロジックと、App 側の transaction / progress / warning policy を分けたい。
@@ -371,6 +367,12 @@
 ## 対応済み事項
 
 ### 高優先度だったもの
+
+- [x] [ref] 正規化処理の責務を整理する。
+  - `SecurityPolicyAtomizer`、`SecurityPolicyMerger`、各 repository / exporter に類似の normalize / distinct / sort が分散している。
+  - 方針案: Domain value object の正規化、不変条件、表示順を分けて責務を明確にする。
+  - 対応内容: CSV 取り込み正規化、Domain 値解釈、Domain collection の不変条件、merge signature / comparison の安定化、export formatting の責務を仕様として分類した。
+  - 補足: 集合演算 API の集約、Palo Alto Service 列モデル分離、service `any` と `Kind` の包含関係、merged service export 表記整理は別 TODO として継続する。
 
 - [x] [spec] 予約語 `any` とユーザー定義名の優先順位・大文字小文字規約を整理する。
   - address / service resolver は小文字 `any` を名前付き object / group より先に組み込み値として扱うため、同名 object / group は参照できない。
