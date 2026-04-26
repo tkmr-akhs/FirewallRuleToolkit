@@ -20,8 +20,8 @@ public sealed class SqliteImportedSecurityPolicyRepository : SqliteReadWriteRepo
     private const string InitializeCommandText =
         "DROP TABLE IF EXISTS " + TableName + ";" +
         "CREATE TABLE " + TableName + " (" +
-        PolicyIndexColumn + " INTEGER NOT NULL PRIMARY KEY CHECK (" + PolicyIndexColumn + " >= 0 AND " + PolicyIndexColumn + " <= 4294967295), " +
-        NameColumn + " TEXT NOT NULL, " +
+        NameColumn + " TEXT NOT NULL PRIMARY KEY, " +
+        PolicyIndexColumn + " INTEGER NOT NULL UNIQUE CHECK (" + PolicyIndexColumn + " >= 0 AND " + PolicyIndexColumn + " <= 4294967295), " +
         FromZoneJsonColumn + " TEXT NOT NULL, " +
         SourceAddressesJsonColumn + " TEXT NOT NULL, " +
         ToZoneJsonColumn + " TEXT NOT NULL, " +

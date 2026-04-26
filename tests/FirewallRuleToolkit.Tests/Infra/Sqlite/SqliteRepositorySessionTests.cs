@@ -256,12 +256,54 @@ public sealed class SqliteRepositorySessionTests
         }
     }
 
-    private static ImportedSecurityPolicy CreateImportedPolicy()
+    [Fact]
+    public void ImportedSecurityPolicies_RejectDuplicatePolicyIndex()
+    {
+        var databaseDirectory = CreateTempDatabaseDirectory();
+
+        try
+        {
+            var repository = new SqliteImportedSecurityPolicyRepository(databaseDirectory);
+
+            Assert.Throws<SqliteException>(() => repository.ReplaceAll(
+            [
+                CreateImportedPolicy(index: 1, name: "allow-web-a"),
+                CreateImportedPolicy(index: 1, name: "allow-web-b")
+            ]));
+        }
+        finally
+        {
+            DeleteDatabaseDirectory(databaseDirectory);
+        }
+    }
+
+    [Fact]
+    public void ImportedSecurityPolicies_RejectDuplicatePolicyName()
+    {
+        var databaseDirectory = CreateTempDatabaseDirectory();
+
+        try
+        {
+            var repository = new SqliteImportedSecurityPolicyRepository(databaseDirectory);
+
+            Assert.Throws<SqliteException>(() => repository.ReplaceAll(
+            [
+                CreateImportedPolicy(index: 1, name: "allow-web"),
+                CreateImportedPolicy(index: 2, name: "allow-web")
+            ]));
+        }
+        finally
+        {
+            DeleteDatabaseDirectory(databaseDirectory);
+        }
+    }
+
+    private static ImportedSecurityPolicy CreateImportedPolicy(uint index = 1, string name = "allow-web")
     {
         return new ImportedSecurityPolicy
         {
-            Index = 1,
-            Name = "allow-web",
+            Index = index,
+            Name = name,
             FromZones = ["trust"],
             SourceAddressReferences = ["src-group"],
             ToZones = ["untrust"],
