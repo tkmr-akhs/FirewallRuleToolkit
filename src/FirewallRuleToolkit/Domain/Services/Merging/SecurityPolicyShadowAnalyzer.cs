@@ -48,10 +48,10 @@ internal static class SecurityPolicyShadowAnalyzer
         ArgumentNullException.ThrowIfNull(backPolicy);
 
         return frontPolicy.MinimumIndex < backPolicy.MinimumIndex
-            && SecurityPolicyContainment.IsApplicationContaining(frontPolicy.Application, backPolicy.Application)
-            && SecurityPolicyContainment.IsAddressContaining(frontPolicy.SourceAddress, backPolicy.SourceAddress)
-            && SecurityPolicyContainment.IsAddressContaining(frontPolicy.DestinationAddress, backPolicy.DestinationAddress)
-            && SecurityPolicyContainment.IsServiceContaining(frontPolicy.Service, backPolicy.Service);
+            && EffectivePolicyConditionContainment.ApplicationCovers(frontPolicy.Application, backPolicy.Application)
+            && EffectivePolicyConditionContainment.AddressCovers(frontPolicy.SourceAddress, backPolicy.SourceAddress)
+            && EffectivePolicyConditionContainment.AddressCovers(frontPolicy.DestinationAddress, backPolicy.DestinationAddress)
+            && EffectivePolicyConditionContainment.ServiceCovers(frontPolicy.Service, backPolicy.Service);
     }
 
     /// <summary>

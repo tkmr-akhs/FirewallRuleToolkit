@@ -83,11 +83,11 @@ internal sealed class HighSimilarityPolicyRecomposer
     private static string CreateRecompositionSignature(MutableMergedSecurityPolicy policy)
     {
         return string.Concat(
-            "fz=", MergeSignatureFormatter.BuildStringSetSignature(policy.FromZones),
-            "|tz=", MergeSignatureFormatter.BuildStringSetSignature(policy.ToZones),
-            "|ap=", MergeSignatureFormatter.BuildStringSetSignature(policy.Applications),
+            "fz=", MergeSignatureBuilder.OrdinalStringSet(policy.FromZones),
+            "|tz=", MergeSignatureBuilder.OrdinalStringSet(policy.ToZones),
+            "|ap=", MergeSignatureBuilder.ApplicationConfiguredIdentitySet(policy.Applications),
             "|ac=", policy.Action,
-            "|gid=", MergeSignatureFormatter.BuildStringSignature(policy.GroupId));
+            "|gid=", MergeSignatureBuilder.OrdinalStringValue(policy.GroupId));
     }
 
     /// <summary>
@@ -201,19 +201,19 @@ internal sealed class HighSimilarityPolicyRecomposer
             {
                 var right = policies[rightIndex];
 
-                var commonDestinationAddresses = CreateIntersectionSet(left.DestinationAddresses, right.DestinationAddresses);
+                var commonDestinationAddresses = AddressConditionSetOperations.IntersectByConfiguredIdentity(left.DestinationAddresses, right.DestinationAddresses);
                 if (!MeetsHighSimilarityThreshold(commonDestinationAddresses.Count, left.DestinationAddresses.Count, right.DestinationAddresses.Count))
                 {
                     continue;
                 }
 
-                var commonServices = CreateIntersectionSet(left.Services, right.Services);
+                var commonServices = ServiceConditionSetOperations.IntersectByConfiguredIdentity(left.Services, right.Services);
                 if (!MeetsHighSimilarityThreshold(commonServices.Count, left.Services.Count, right.Services.Count))
                 {
                     continue;
                 }
 
-                var unionSourceAddresses = CreateUnionSet(left.SourceAddresses, right.SourceAddresses);
+                var unionSourceAddresses = AddressConditionSetOperations.UnionByConfiguredIdentity(left.SourceAddresses, right.SourceAddresses);
 
                 if (smallWellKnownDestinationPortMatcher.TryGetSmallWellKnownDestinationPorts(commonServices, out var destinationPorts))
                 {
@@ -279,7 +279,7 @@ internal sealed class HighSimilarityPolicyRecomposer
         HashSet<AddressValue> commonDestinationAddresses,
         HashSet<ServiceValue> commonServices)
     {
-        var destinationDifference = CreateDifferenceSet(template.DestinationAddresses, commonDestinationAddresses);
+        var destinationDifference = AddressConditionSetOperations.SubtractByConfiguredIdentity(template.DestinationAddresses, commonDestinationAddresses);
         if (destinationDifference.Count > 0)
         {
             yield return MergedSecurityPolicyFactory.CreateFromTemplate(
@@ -292,7 +292,7 @@ internal sealed class HighSimilarityPolicyRecomposer
                 template.OriginalPolicyNames);
         }
 
-        var serviceDifference = CreateDifferenceSet(template.Services, commonServices);
+        var serviceDifference = ServiceConditionSetOperations.SubtractByConfiguredIdentity(template.Services, commonServices);
         if (serviceDifference.Count > 0)
         {
             yield return MergedSecurityPolicyFactory.CreateFromTemplate(
@@ -304,57 +304,6 @@ internal sealed class HighSimilarityPolicyRecomposer
                 template.MaximumIndex,
                 template.OriginalPolicyNames);
         }
-    }
-
-    /// <summary>
-    /// 2 集合の共通部分を作成します。
-    /// </summary>
-    /// <typeparam name="T">集合要素型。</typeparam>
-    /// <param name="left">左集合。</param>
-    /// <param name="right">右集合。</param>
-    /// <returns>共通要素集合。</returns>
-    private static HashSet<T> CreateIntersectionSet<T>(
-        IEnumerable<T> left,
-        IEnumerable<T> right)
-        where T : notnull
-    {
-        var result = new HashSet<T>(left);
-        result.IntersectWith(right);
-        return result;
-    }
-
-    /// <summary>
-    /// 集合差分を作成します。
-    /// </summary>
-    /// <typeparam name="T">集合要素型。</typeparam>
-    /// <param name="source">差分元集合。</param>
-    /// <param name="excluded">除外対象集合。</param>
-    /// <returns>差分集合。</returns>
-    private static HashSet<T> CreateDifferenceSet<T>(
-        IEnumerable<T> source,
-        IEnumerable<T> excluded)
-        where T : notnull
-    {
-        var result = new HashSet<T>(source);
-        result.ExceptWith(excluded);
-        return result;
-    }
-
-    /// <summary>
-    /// 2 集合の和集合を作成します。
-    /// </summary>
-    /// <typeparam name="T">集合要素型。</typeparam>
-    /// <param name="left">左集合。</param>
-    /// <param name="right">右集合。</param>
-    /// <returns>和集合。</returns>
-    private static HashSet<T> CreateUnionSet<T>(
-        IEnumerable<T> left,
-        IEnumerable<T> right)
-        where T : notnull
-    {
-        var result = new HashSet<T>(left);
-        result.UnionWith(right);
-        return result;
     }
 
     /// <summary>

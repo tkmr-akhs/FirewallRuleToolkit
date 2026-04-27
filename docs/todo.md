@@ -15,10 +15,6 @@
 
 ## 高優先度
 
-- [ ] [ref] address / service / application の集合演算 API を Domain に集約する。
-  - containment は `SecurityPolicyContainment`、差分/和集合は `HighSimilarityPolicyRecomposer`、CIDR 判定や表示用変換は exporter 側に分散している。
-  - 方針案: `AddressRangeSet` / `ServiceConditionSet` / `ApplicationSet` などに contains / union / intersect / subtract / format 用の明示的な責務境界を持たせる。
-
 - [ ] [ux] merged service export のプロトコル範囲表記を整理する。
   - `CsvMergedSecurityPolicyWriter` はプロトコル範囲の両端をプロトコル名へ変換するため、`1-17` が `icmp-udp` のような表記になり得る。
   - `ServiceValueParser` の直指定サービス parser はプロトコル名を範囲端点として扱わないため、レビュー用としても再利用用としても意味が読み取りづらい。
@@ -362,6 +358,12 @@
 ## 対応済み事項
 
 ### 高優先度だったもの
+
+- [x] [ref] address / service / application の集合演算 API を Domain に集約する。
+  - containment は `SecurityPolicyContainment`、差分/和集合は `HighSimilarityPolicyRecomposer`、CIDR 判定や表示用変換は exporter 側に分散している。
+  - 対応内容: ルール評価上の包含を `EffectivePolicyConditionContainment` として `Domain.Services.PolicyConditions` へ移し、shadow / test / Allow 候補包含除去が `AddressCovers` / `ServiceCovers` / `ApplicationCovers` を使う形にした。
+  - 対応内容: merge / 高一致率再編成で使う設定値としての集合操作を `AddressConditionSetOperations` / `ServiceConditionSetOperations` / `ApplicationConditionSetOperations` に集約し、`UnionByConfiguredIdentity` / `IntersectByConfiguredIdentity` / `SubtractByConfiguredIdentity` / `CreateConfiguredIdentitySignature` として意図を明示した。
+  - 補足: CSV export の CIDR 化や service 可読表記は presentation formatting として Infra 側に残す。表示順の安定化や merged service export 表記の改善は既存の `[ux]` TODO として継続する。
 
 - [x] [ref] Domain runner と UseCase の責務境界を整理する。
   - `SecurityPolicyAtomizeRunner` / `SecurityPolicyMergeRunner` / `SecurityPolicyTestRunner` が進捗間隔、スキップ扱い、repository 追記 callback、実行件数集計を持っており、Domain service がバッチ実行手順まで知っている。

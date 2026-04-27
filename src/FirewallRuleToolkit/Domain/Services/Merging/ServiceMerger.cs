@@ -24,7 +24,7 @@ internal sealed class ServiceMerger : SignatureBasedMergerBase
     /// <param name="source">吸収元ポリシー。</param>
     protected override void MergeCollections(MutableMergedSecurityPolicy target, MutableMergedSecurityPolicy source)
     {
-        target.Services.UnionWith(source.Services);
+        ServiceConditionSetOperations.AbsorbConfiguredIdentity(target.Services, source.Services);
     }
 
     /// <summary>
@@ -35,12 +35,12 @@ internal sealed class ServiceMerger : SignatureBasedMergerBase
     private static string CreateMergeSignature(MutableMergedSecurityPolicy policy)
     {
         return string.Concat(
-            "fz=", MergeSignatureFormatter.BuildStringSetSignature(policy.FromZones),
-            "|sa=", MergeSignatureFormatter.BuildAddressSetSignature(policy.SourceAddresses),
-            "|tz=", MergeSignatureFormatter.BuildStringSetSignature(policy.ToZones),
-            "|da=", MergeSignatureFormatter.BuildAddressSetSignature(policy.DestinationAddresses),
-            "|ap=", MergeSignatureFormatter.BuildStringSetSignature(policy.Applications),
+            "fz=", MergeSignatureBuilder.OrdinalStringSet(policy.FromZones),
+            "|sa=", MergeSignatureBuilder.AddressConfiguredIdentitySet(policy.SourceAddresses),
+            "|tz=", MergeSignatureBuilder.OrdinalStringSet(policy.ToZones),
+            "|da=", MergeSignatureBuilder.AddressConfiguredIdentitySet(policy.DestinationAddresses),
+            "|ap=", MergeSignatureBuilder.ApplicationConfiguredIdentitySet(policy.Applications),
             "|ac=", policy.Action,
-            "|gid=", MergeSignatureFormatter.BuildStringSignature(policy.GroupId));
+            "|gid=", MergeSignatureBuilder.OrdinalStringValue(policy.GroupId));
     }
 }

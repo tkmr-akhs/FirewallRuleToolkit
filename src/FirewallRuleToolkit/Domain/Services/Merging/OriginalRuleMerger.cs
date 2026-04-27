@@ -25,11 +25,11 @@ internal sealed class OriginalRuleMerger : SignatureBasedMergerBase
     protected override void MergeCollections(MutableMergedSecurityPolicy target, MutableMergedSecurityPolicy source)
     {
         target.FromZones.UnionWith(source.FromZones);
-        target.SourceAddresses.UnionWith(source.SourceAddresses);
+        AddressConditionSetOperations.AbsorbConfiguredIdentity(target.SourceAddresses, source.SourceAddresses);
         target.ToZones.UnionWith(source.ToZones);
-        target.DestinationAddresses.UnionWith(source.DestinationAddresses);
-        target.Applications.UnionWith(source.Applications);
-        target.Services.UnionWith(source.Services);
+        AddressConditionSetOperations.AbsorbConfiguredIdentity(target.DestinationAddresses, source.DestinationAddresses);
+        ApplicationConditionSetOperations.AbsorbConfiguredIdentity(target.Applications, source.Applications);
+        ServiceConditionSetOperations.AbsorbConfiguredIdentity(target.Services, source.Services);
     }
 
     /// <summary>
@@ -41,9 +41,9 @@ internal sealed class OriginalRuleMerger : SignatureBasedMergerBase
     {
         return string.Concat(
             "ac=", policy.Action,
-            "|gid=", MergeSignatureFormatter.BuildStringSignature(policy.GroupId),
+            "|gid=", MergeSignatureBuilder.OrdinalStringValue(policy.GroupId),
             "|min=", policy.MinimumIndex,
             "|max=", policy.MaximumIndex,
-            "|orig=", MergeSignatureFormatter.BuildStringSetSignature(policy.OriginalPolicyNames));
+            "|orig=", MergeSignatureBuilder.OrdinalStringSet(policy.OriginalPolicyNames));
     }
 }

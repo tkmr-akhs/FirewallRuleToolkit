@@ -52,7 +52,7 @@ internal sealed class DestinationAddressMerger : SignatureBasedMergerBase
     /// <param name="source">吸収元ポリシー。</param>
     protected override void MergeCollections(MutableMergedSecurityPolicy target, MutableMergedSecurityPolicy source)
     {
-        target.DestinationAddresses.UnionWith(source.DestinationAddresses);
+        AddressConditionSetOperations.AbsorbConfiguredIdentity(target.DestinationAddresses, source.DestinationAddresses);
     }
 
     /// <summary>
@@ -92,13 +92,13 @@ internal sealed class DestinationAddressMerger : SignatureBasedMergerBase
     private static string CreateMergeSignature(MutableMergedSecurityPolicy policy)
     {
         return string.Concat(
-            "fz=", MergeSignatureFormatter.BuildStringSetSignature(policy.FromZones),
-            "|sa=", MergeSignatureFormatter.BuildAddressSetSignature(policy.SourceAddresses),
-            "|tz=", MergeSignatureFormatter.BuildStringSetSignature(policy.ToZones),
-            "|ap=", MergeSignatureFormatter.BuildStringSetSignature(policy.Applications),
-            "|sv=", MergeSignatureFormatter.BuildServiceSetSignature(policy.Services),
+            "fz=", MergeSignatureBuilder.OrdinalStringSet(policy.FromZones),
+            "|sa=", MergeSignatureBuilder.AddressConfiguredIdentitySet(policy.SourceAddresses),
+            "|tz=", MergeSignatureBuilder.OrdinalStringSet(policy.ToZones),
+            "|ap=", MergeSignatureBuilder.ApplicationConfiguredIdentitySet(policy.Applications),
+            "|sv=", MergeSignatureBuilder.ServiceConfiguredIdentitySet(policy.Services),
             "|ac=", policy.Action,
-            "|gid=", MergeSignatureFormatter.BuildStringSignature(policy.GroupId));
+            "|gid=", MergeSignatureBuilder.OrdinalStringValue(policy.GroupId));
     }
 
     /// <summary>
@@ -108,7 +108,7 @@ internal sealed class DestinationAddressMerger : SignatureBasedMergerBase
     /// <returns>宛先アドレス集合識別用シグネチャ。</returns>
     private static string BuildDestinationAddressSetSignature(MutableMergedSecurityPolicy policy)
     {
-        return MergeSignatureFormatter.BuildAddressSetSignature(policy.DestinationAddresses);
+        return MergeSignatureBuilder.AddressConfiguredIdentitySet(policy.DestinationAddresses);
     }
 
     /// <summary>

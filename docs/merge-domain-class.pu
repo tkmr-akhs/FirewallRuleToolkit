@@ -68,6 +68,38 @@ package "Domain.Services" {
   }
 }
 
+package "Domain.Services.PolicyConditions" {
+  class EffectivePolicyConditionContainment <<static>> {
+    +AddressCovers(...) : bool
+    +ServiceCovers(...) : bool
+    +ApplicationCovers(...) : bool
+  }
+
+  class AddressConditionSetOperations <<static>> {
+    +AbsorbConfiguredIdentity(...)
+    +UnionByConfiguredIdentity(...) : HashSet<AddressValue>
+    +IntersectByConfiguredIdentity(...) : HashSet<AddressValue>
+    +SubtractByConfiguredIdentity(...) : HashSet<AddressValue>
+    +CreateConfiguredIdentitySignature(...) : string
+  }
+
+  class ServiceConditionSetOperations <<static>> {
+    +AbsorbConfiguredIdentity(...)
+    +UnionByConfiguredIdentity(...) : HashSet<ServiceValue>
+    +IntersectByConfiguredIdentity(...) : HashSet<ServiceValue>
+    +SubtractByConfiguredIdentity(...) : HashSet<ServiceValue>
+    +CreateConfiguredIdentitySignature(...) : string
+  }
+
+  class ApplicationConditionSetOperations <<static>> {
+    +AbsorbConfiguredIdentity(...)
+    +UnionByConfiguredIdentity(...) : HashSet<string>
+    +IntersectByConfiguredIdentity(...) : HashSet<string>
+    +SubtractByConfiguredIdentity(...) : HashSet<string>
+    +CreateConfiguredIdentitySignature(...) : string
+  }
+}
+
 package "Domain.Services.Merging" {
   abstract class SignatureBasedMergerBase <<base>> {
     #MergeBySignature(...) : List<MutableMergedSecurityPolicy>
@@ -155,17 +187,12 @@ package "Domain.Services.Merging" {
 
   class "SecurityPolicyShadowAnalyzer.ShadowingRelation" as ShadowingRelation <<value>>
 
-  class SecurityPolicyContainment <<static>> {
-    +IsAddressContaining(...) : bool
-    +IsServiceContaining(...) : bool
-    +IsApplicationContaining(...) : bool
-  }
-
-  class MergeSignatureFormatter <<static>> {
-    +BuildAddressSetSignature(...) : string
-    +BuildStringSetSignature(...) : string
-    +BuildServiceSetSignature(...) : string
-    +BuildStringSignature(...) : string
+  class MergeSignatureBuilder <<static>> {
+    +AddressConfiguredIdentitySet(...) : string
+    +ServiceConfiguredIdentitySet(...) : string
+    +ApplicationConfiguredIdentitySet(...) : string
+    +OrdinalStringSet(...) : string
+    +OrdinalStringValue(...) : string
   }
 
   class MergePartitionKey <<value>> {
@@ -361,10 +388,16 @@ OriginalRuleMerger --|> SignatureBasedMergerBase
 SignatureBasedMergerBase ..> MergedSecurityPolicyFactory
 SignatureBasedMergerBase ..> MutableMergedSecurityPolicy
 
-ServiceMerger ..> MergeSignatureFormatter
-SourceAddressMerger ..> MergeSignatureFormatter
-DestinationAddressMerger ..> MergeSignatureFormatter
-OriginalRuleMerger ..> MergeSignatureFormatter
+ServiceMerger ..> MergeSignatureBuilder
+ServiceMerger ..> ServiceConditionSetOperations
+SourceAddressMerger ..> MergeSignatureBuilder
+SourceAddressMerger ..> AddressConditionSetOperations
+DestinationAddressMerger ..> MergeSignatureBuilder
+DestinationAddressMerger ..> AddressConditionSetOperations
+OriginalRuleMerger ..> MergeSignatureBuilder
+OriginalRuleMerger ..> AddressConditionSetOperations
+OriginalRuleMerger ..> ServiceConditionSetOperations
+OriginalRuleMerger ..> ApplicationConditionSetOperations
 ServiceMerger ..> MutableMergedSecurityPolicy
 SourceAddressMerger ..> MutableMergedSecurityPolicy
 DestinationAddressMerger ..> MutableMergedSecurityPolicy
@@ -372,14 +405,16 @@ OriginalRuleMerger ..> MutableMergedSecurityPolicy
 
 DestinationAddressMerger *-- SmallWellKnownDestinationPortMatcher
 HighSimilarityPolicyRecomposer *-- SmallWellKnownDestinationPortMatcher
-HighSimilarityPolicyRecomposer ..> MergeSignatureFormatter
+HighSimilarityPolicyRecomposer ..> MergeSignatureBuilder
+HighSimilarityPolicyRecomposer ..> AddressConditionSetOperations
+HighSimilarityPolicyRecomposer ..> ServiceConditionSetOperations
 HighSimilarityPolicyRecomposer ..> MergedSecurityPolicyFactory
 HighSimilarityPolicyRecomposer ..> MutableMergedSecurityPolicy
 HighSimilarityPolicyRecomposer ..> MergedSecurityPolicy
 
-AtomicMergeCandidateDeduplicator ..> SecurityPolicyContainment
+AtomicMergeCandidateDeduplicator ..> EffectivePolicyConditionContainment
 AtomicMergeCandidateDeduplicator ..> AtomicMergeCandidate
-SecurityPolicyShadowAnalyzer ..> SecurityPolicyContainment
+SecurityPolicyShadowAnalyzer ..> EffectivePolicyConditionContainment
 SecurityPolicyShadowAnalyzer ..> ShadowPartitionAnalysis
 SecurityPolicyShadowAnalyzer ..> AtomicMergeCandidate
 ShadowPartitionAnalysis o-- ShadowingRelation
@@ -389,10 +424,13 @@ AtomicMergeCandidateFactory ..> AtomicSecurityPolicy
 AtomicMergeCandidateFactory ..> AtomicMergeCandidate
 MergedSecurityPolicyFactory ..> AtomicMergeCandidate
 MergedSecurityPolicyFactory ..> MutableMergedSecurityPolicy
-MergeSignatureFormatter ..> AddressValue
-MergeSignatureFormatter ..> ServiceValue
-SecurityPolicyContainment ..> AddressValue
-SecurityPolicyContainment ..> ServiceValue
+MergeSignatureBuilder ..> AddressConditionSetOperations
+MergeSignatureBuilder ..> ServiceConditionSetOperations
+MergeSignatureBuilder ..> ApplicationConditionSetOperations
+AddressConditionSetOperations ..> AddressValue
+ServiceConditionSetOperations ..> ServiceValue
+EffectivePolicyConditionContainment ..> AddressValue
+EffectivePolicyConditionContainment ..> ServiceValue
 
 ImportedSecurityPolicy ..> SecurityPolicyAction
 ResolvedSecurityPolicy ..> ResolvedAddress

@@ -98,19 +98,19 @@ internal sealed class SecurityPolicyTester
         return mergedPolicy.FromZones.Contains(atomicPolicy.FromZone)
             && mergedPolicy.ToZones.Contains(atomicPolicy.ToZone)
             && mergedPolicy.SourceAddresses.Any(
-                sourceAddress => SecurityPolicyContainment.IsAddressContaining(
+                sourceAddress => EffectivePolicyConditionContainment.AddressCovers(
                     sourceAddress,
                     atomicPolicy.SourceAddress))
             && mergedPolicy.DestinationAddresses.Any(
-                destinationAddress => SecurityPolicyContainment.IsAddressContaining(
+                destinationAddress => EffectivePolicyConditionContainment.AddressCovers(
                     destinationAddress,
                     atomicPolicy.DestinationAddress))
             && mergedPolicy.Applications.Any(
-                application => SecurityPolicyContainment.IsApplicationContaining(
+                application => EffectivePolicyConditionContainment.ApplicationCovers(
                     application,
                     atomicPolicy.Application))
             && mergedPolicy.Services.Any(
-                service => SecurityPolicyContainment.IsServiceContaining(
+                service => EffectivePolicyConditionContainment.ServiceCovers(
                     service,
                     atomicPolicy.Service));
     }

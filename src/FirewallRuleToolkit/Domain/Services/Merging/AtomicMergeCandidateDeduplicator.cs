@@ -110,9 +110,9 @@ internal static class AtomicMergeCandidateDeduplicator
             && string.Equals(container.ToZone, contained.ToZone, StringComparison.Ordinal)
             && container.Action == contained.Action
             && string.Equals(container.GroupId, contained.GroupId, StringComparison.Ordinal)
-            && SecurityPolicyContainment.IsAddressContaining(container.SourceAddress, contained.SourceAddress)
-            && SecurityPolicyContainment.IsAddressContaining(container.DestinationAddress, contained.DestinationAddress)
-            && SecurityPolicyContainment.IsApplicationContaining(container.Application, contained.Application)
-            && SecurityPolicyContainment.IsServiceContaining(container.Service, contained.Service);
+            && EffectivePolicyConditionContainment.AddressCovers(container.SourceAddress, contained.SourceAddress)
+            && EffectivePolicyConditionContainment.AddressCovers(container.DestinationAddress, contained.DestinationAddress)
+            && EffectivePolicyConditionContainment.ApplicationCovers(container.Application, contained.Application)
+            && EffectivePolicyConditionContainment.ServiceCovers(container.Service, contained.Service);
     }
 }

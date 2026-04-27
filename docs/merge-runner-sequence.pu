@@ -10,7 +10,7 @@ participant "SecurityPolicyMergeRunner.Run" as Runner
 participant "MergePartitionKey" as PartitionKey
 participant "AtomicMergeCandidateFactory" as AtomicFactory
 participant "SecurityPolicyShadowAnalyzer" as ShadowAnalyzer
-participant "SecurityPolicyContainment" as Containment
+participant "EffectivePolicyConditionContainment" as Containment
 
 participant "SecurityPolicyMerger" as Merger
 participant "AtomicMergeCandidateDeduplicator" as Deduplicator
@@ -57,12 +57,12 @@ loop each atomic policy in merge order
     loop each candidate in partitionCandidates
       ShadowAnalyzer -> ShadowAnalyzer : FindShadowingIndex(nonShadowedIndices, candidateIndex)
       ShadowAnalyzer -> ShadowAnalyzer : IsShadowedBy(frontCandidate, candidate)
-      ShadowAnalyzer -> Containment : IsApplicationContaining(...)
-      Containment --> ShadowAnalyzer : application contained?
-      ShadowAnalyzer -> Containment : IsAddressContaining(source / destination)
-      Containment --> ShadowAnalyzer : address contained?
-      ShadowAnalyzer -> Containment : IsServiceContaining(...)
-      Containment --> ShadowAnalyzer : service contained?
+      ShadowAnalyzer -> Containment : ApplicationCovers(...)
+      Containment --> ShadowAnalyzer : application covered?
+      ShadowAnalyzer -> Containment : AddressCovers(source / destination)
+      Containment --> ShadowAnalyzer : address covered?
+      ShadowAnalyzer -> Containment : ServiceCovers(...)
+      Containment --> ShadowAnalyzer : service covered?
     end
     ShadowAnalyzer --> Runner : NonShadowedIndices + ShadowingRelations
     deactivate ShadowAnalyzer
@@ -82,12 +82,12 @@ loop each atomic policy in merge order
     alt allow policies exist
       Merger -> Deduplicator : RemoveContainedPolicies(allowPolicies)
       activate Deduplicator
-      Deduplicator -> Containment : IsAddressContaining(source / destination)
-      Containment --> Deduplicator : address containment
-      Deduplicator -> Containment : IsApplicationContaining(...)
-      Containment --> Deduplicator : application containment
-      Deduplicator -> Containment : IsServiceContaining(...)
-      Containment --> Deduplicator : service containment
+      Deduplicator -> Containment : AddressCovers(source / destination)
+      Containment --> Deduplicator : address covered
+      Deduplicator -> Containment : ApplicationCovers(...)
+      Containment --> Deduplicator : application covered
+      Deduplicator -> Containment : ServiceCovers(...)
+      Containment --> Deduplicator : service covered
       Deduplicator --> Merger : deduplicated allow policies
       deactivate Deduplicator
 

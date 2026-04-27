@@ -3,7 +3,7 @@ title Merge Merger Sequence
 
 participant "SecurityPolicyMergeRunner.FlushPartitionAfterShadowing" as RunnerFlush
 participant "SecurityPolicyShadowAnalyzer" as ShadowAnalyzer
-participant "SecurityPolicyContainment" as Containment
+participant "EffectivePolicyConditionContainment" as Containment
 participant "emitMergedPolicies callback" as Output
 
 participant "SecurityPolicyMerger" as Merger
@@ -16,6 +16,7 @@ participant "DestinationAddressMerger" as DestinationMerger
 participant "OriginalRuleMerger" as OriginalRuleMerger
 participant "HighSimilarityPolicyRecomposer" as Recomposer
 participant "SmallWellKnownDestinationPortMatcher" as WellKnownMatcher
+participant "ConfiguredIdentitySetOperations" as ConfiguredIdentity
 
 note over ServiceMerger, OriginalRuleMerger
   MergeBySignature / MergeSignatureSet /
@@ -25,12 +26,12 @@ end note
 RunnerFlush -> ShadowAnalyzer : Analyze(partitionCandidates)
 activate ShadowAnalyzer
 loop compare non-shadowed candidate and later candidate
-  ShadowAnalyzer -> Containment : IsApplicationContaining(...)
-  Containment --> ShadowAnalyzer : application containment
-  ShadowAnalyzer -> Containment : IsAddressContaining(source / destination)
-  Containment --> ShadowAnalyzer : address containment
-  ShadowAnalyzer -> Containment : IsServiceContaining(service)
-  Containment --> ShadowAnalyzer : service containment
+  ShadowAnalyzer -> Containment : ApplicationCovers(...)
+  Containment --> ShadowAnalyzer : application covered
+  ShadowAnalyzer -> Containment : AddressCovers(source / destination)
+  Containment --> ShadowAnalyzer : address covered
+  ShadowAnalyzer -> Containment : ServiceCovers(service)
+  Containment --> ShadowAnalyzer : service covered
 end
 ShadowAnalyzer --> RunnerFlush : NonShadowedIndices + ShadowingRelations
 deactivate ShadowAnalyzer
@@ -53,12 +54,12 @@ alt allow policies exist
   activate Deduplicator
   Deduplicator -> Deduplicator : clone candidates for comparison
   loop compare allow candidate pairs
-    Deduplicator -> Containment : IsAddressContaining(source / destination)
-    Containment --> Deduplicator : address containment
-    Deduplicator -> Containment : IsApplicationContaining(...)
-    Containment --> Deduplicator : application containment
-    Deduplicator -> Containment : IsServiceContaining(service)
-    Containment --> Deduplicator : service containment
+    Deduplicator -> Containment : AddressCovers(source / destination)
+    Containment --> Deduplicator : address covered
+    Deduplicator -> Containment : ApplicationCovers(...)
+    Containment --> Deduplicator : application covered
+    Deduplicator -> Containment : ServiceCovers(service)
+    Containment --> Deduplicator : service covered
     alt one candidate contains the other
       Deduplicator -> Deduplicator : absorb traceability and mark removed
     else no containment
@@ -112,7 +113,10 @@ alt allow policies exist
   Recomposer -> Recomposer : CreateRecompositionSignature(policy)
   loop each same FromZone / ToZone / Application / Action / GroupId group
     loop while recomposable pair exists
-      Recomposer -> Recomposer : intersect destination / services\nand union sources
+      Recomposer -> ConfiguredIdentity : IntersectByConfiguredIdentity(destination / service)
+      ConfiguredIdentity --> Recomposer : common destination / services
+      Recomposer -> ConfiguredIdentity : UnionByConfiguredIdentity(source)
+      ConfiguredIdentity --> Recomposer : union sources
       alt destination and service axes reach threshold
         Recomposer -> WellKnownMatcher : TryGetSmallWellKnownDestinationPorts(commonServices)
         WellKnownMatcher --> Recomposer : matching ports / no match
@@ -121,6 +125,8 @@ alt allow policies exist
         else valid pair
           Recomposer -> PolicyFactory : CreateFromTemplate(...union-source common policy...)
           PolicyFactory --> Recomposer : common mutable policy
+          Recomposer -> ConfiguredIdentity : SubtractByConfiguredIdentity(destination / service)
+          ConfiguredIdentity --> Recomposer : residual destination / services
           Recomposer -> PolicyFactory : CreateFromTemplate(...destination / service residuals with original sources...)
           PolicyFactory --> Recomposer : residual mutable policies
           Recomposer -> Recomposer : settle residuals and requeue common policy
