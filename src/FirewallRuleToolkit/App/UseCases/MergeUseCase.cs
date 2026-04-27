@@ -6,6 +6,11 @@
 internal static class MergeUseCase
 {
     /// <summary>
+    /// 進捗通知を行う Atomic ポリシー件数の間隔です。
+    /// </summary>
+    private const int ProgressReportInterval = 2000;
+
+    /// <summary>
     /// データベース内の Atomic ポリシーを統合します。
     /// </summary>
     /// <param name="sourceAtomicPolicies">merge 用順序で Atomic ポリシーを提供する repository。</param>
@@ -32,8 +37,15 @@ internal static class MergeUseCase
             wellKnownDestinationPorts,
             smallWellKnownDestinationPortCountThreshold,
             logger);
-        reportProgress ??= processedAtomicCount =>
-            logger.LogInformation("merge progress. processed atomic policies: {ProcessedAtomicCount}", processedAtomicCount);
+        var progressReporter = reportProgress ?? (processedAtomicCount =>
+            logger.LogInformation("merge progress. processed atomic policies: {ProcessedAtomicCount}", processedAtomicCount));
+        Action<long> onAtomicPolicyProcessed = processedAtomicCount =>
+        {
+            if (processedAtomicCount % ProgressReportInterval == 0)
+            {
+                progressReporter(processedAtomicCount);
+            }
+        };
 
         sourceAtomicPolicies.EnsureAvailable();
 
@@ -43,14 +55,14 @@ internal static class MergeUseCase
 
         var result = runner.Run(
             sourceAtomicPolicies.GetAllOrderedForMerge(),
-            writeSession.MergedSecurityPolicies.AppendRange,
-            reportProgress);
+            emitMergedPolicies: writeSession.MergedSecurityPolicies.AppendRange,
+            onAtomicPolicyProcessed: onAtomicPolicyProcessed);
 
         logger.LogInformation(
-            "merge completed. atomicProcessed: {AtomicProcessed}, partitionsProcessed: {PartitionsProcessed}, mergedWritten: {MergedWritten}",
+            "merge completed. atomicProcessed: {AtomicProcessed}, partitionsProcessed: {PartitionsProcessed}, mergedProduced: {MergedProduced}",
             result.ProcessedAtomicCount,
             result.ProcessedPartitionCount,
-            result.WrittenMergedCount);
+            result.ProducedMergedCount);
 
         LogActionRangeOverlaps(logger, result.ActionRangeOverlaps);
 

@@ -8,11 +8,6 @@ namespace FirewallRuleToolkit.Domain.Services;
 /// </summary>
 internal sealed class SecurityPolicyMergeRunner
 {
-    /// <summary>
-    /// 進捗通知を行う Atomic ポリシー件数の間隔です。
-    /// </summary>
-    private const int ProgressReportInterval = 2000;
-
     private readonly SecurityPolicyMerger merger;
 
     /// <summary>
@@ -60,16 +55,16 @@ internal sealed class SecurityPolicyMergeRunner
     /// 同じパーティションが途中で分断されると別パーティションとして処理され、shadow 判定や merge 結果が変わります。
     /// </remarks>
     /// <param name="atomicPoliciesOrderedForMerge">`FromZone`、`ToZone`、`Service.Kind`、`OriginalIndex` の順で並び、同じ merge パーティションが連続するよう整列された Atomic ポリシー列。</param>
-    /// <param name="appendMergedPolicies">merged ポリシーの追記先。</param>
-    /// <param name="reportProgress">Atomic 処理進捗の通知先。</param>
+    /// <param name="emitMergedPolicies">生成した merged ポリシー batch の通知先。</param>
+    /// <param name="onAtomicPolicyProcessed">Atomic ポリシー 1 件の処理完了通知先。</param>
     /// <returns>実行結果の要約。</returns>
     public SecurityPolicyMergeRunResult Run(
         IEnumerable<AtomicSecurityPolicy> atomicPoliciesOrderedForMerge,
-        Action<IEnumerable<MergedSecurityPolicy>> appendMergedPolicies,
-        Action<long>? reportProgress = null)
+        PolicyBatchEmitter<MergedSecurityPolicy> emitMergedPolicies,
+        Action<long>? onAtomicPolicyProcessed = null)
     {
         ArgumentNullException.ThrowIfNull(atomicPoliciesOrderedForMerge);
-        ArgumentNullException.ThrowIfNull(appendMergedPolicies);
+        ArgumentNullException.ThrowIfNull(emitMergedPolicies);
 
         var partitionCandidates = new List<AtomicMergeCandidate>();
         var mergedRanges = new List<SecurityPolicyMergeRunResult.MergeIndexRange>();
@@ -77,15 +72,12 @@ internal sealed class SecurityPolicyMergeRunner
 
         var processedAtomicCount = 0L;
         var processedPartitionCount = 0L;
-        var writtenMergedCount = 0L;
+        var producedMergedCount = 0L;
 
         foreach (var atomicPolicy in atomicPoliciesOrderedForMerge)
         {
             processedAtomicCount++;
-            if (processedAtomicCount % ProgressReportInterval == 0)
-            {
-                reportProgress?.Invoke(processedAtomicCount);
-            }
+            onAtomicPolicyProcessed?.Invoke(processedAtomicCount);
 
             var nextPartition = MergePartitionKey.FromAtomic(atomicPolicy);
             if (currentPartition is null)
@@ -94,8 +86,8 @@ internal sealed class SecurityPolicyMergeRunner
             }
             else if (!currentPartition.Value.Equals(nextPartition))
             {
-                var flushedPolicies = FlushPartitionAfterShadowing(partitionCandidates, appendMergedPolicies);
-                writtenMergedCount += flushedPolicies.Length;
+                var flushedPolicies = FlushPartitionAfterShadowing(partitionCandidates, emitMergedPolicies);
+                producedMergedCount += flushedPolicies.Length;
                 processedPartitionCount++;
                 AppendMergeRanges(mergedRanges, flushedPolicies);
                 currentPartition = nextPartition;
@@ -106,8 +98,8 @@ internal sealed class SecurityPolicyMergeRunner
 
         if (partitionCandidates.Count > 0)
         {
-            var flushedPolicies = FlushPartitionAfterShadowing(partitionCandidates, appendMergedPolicies);
-            writtenMergedCount += flushedPolicies.Length;
+            var flushedPolicies = FlushPartitionAfterShadowing(partitionCandidates, emitMergedPolicies);
+            producedMergedCount += flushedPolicies.Length;
             processedPartitionCount++;
             AppendMergeRanges(mergedRanges, flushedPolicies);
         }
@@ -116,20 +108,20 @@ internal sealed class SecurityPolicyMergeRunner
         {
             ProcessedAtomicCount = processedAtomicCount,
             ProcessedPartitionCount = processedPartitionCount,
-            WrittenMergedCount = writtenMergedCount,
+            ProducedMergedCount = producedMergedCount,
             ActionRangeOverlaps = FindActionRangeOverlaps(mergedRanges)
         };
     }
 
     /// <summary>
-    /// 現在の partition から shadowed 候補を除去して merge し、出力先へ書き込んだ結果を返します。
+    /// 現在の partition から shadowed 候補を除去して merge し、生成した結果を通知します。
     /// </summary>
     /// <param name="partitionCandidates">対象 partition の Atomic マージ候補列。</param>
-    /// <param name="appendMergedPolicies">merged の追記先。</param>
-    /// <returns>書き込んだ merged ポリシー列。</returns>
+    /// <param name="emitMergedPolicies">生成した merged ポリシー batch の通知先。</param>
+    /// <returns>生成した merged ポリシー列。</returns>
     private MergedSecurityPolicy[] FlushPartitionAfterShadowing(
         List<AtomicMergeCandidate> partitionCandidates,
-        Action<IEnumerable<MergedSecurityPolicy>> appendMergedPolicies)
+        PolicyBatchEmitter<MergedSecurityPolicy> emitMergedPolicies)
     {
         if (partitionCandidates.Count == 0)
         {
@@ -139,7 +131,7 @@ internal sealed class SecurityPolicyMergeRunner
         RemoveShadowedAtomicPolicies(partitionCandidates);
 
         var mergedPolicies = merger.MergePartition(partitionCandidates).ToArray();
-        appendMergedPolicies(mergedPolicies);
+        emitMergedPolicies(mergedPolicies);
         partitionCandidates.Clear();
         return mergedPolicies;
     }

@@ -59,6 +59,25 @@ public sealed class SecurityPolicyAtomizeRunnerTests
         Assert.Equal("Unsupported IPv4 address: invalid", skipped.Reason);
     }
 
+    [Fact]
+    public void Run_WhenSourcePolicyProcessed_ReportsProcessedCountForEachSourcePolicy()
+    {
+        var runner = new SecurityPolicyAtomizeRunner(CreateResolver(), threshold: 10);
+        var reportedCounts = new List<int>();
+
+        var result = runner.Run(
+            [
+                CreatePolicy(1),
+                CreatePolicy(2),
+                CreatePolicy(3)
+            ],
+            static _ => { },
+            onSourcePolicyProcessed: reportedCounts.Add);
+
+        Assert.Equal(3, result.ProcessedSourcePolicyCount);
+        Assert.Equal([1, 2, 3], reportedCounts);
+    }
+
     private static ImportedSecurityPolicy CreatePolicy(
         int index,
         SecurityPolicyAction action = SecurityPolicyAction.Allow,

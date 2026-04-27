@@ -74,7 +74,7 @@ public sealed class TestUseCaseTests
         Assert.Contains("policy=missing-policy", logText, StringComparison.Ordinal);
         Assert.DoesNotContain("test info: shadowed atomic policy is not directly represented in merged output.", logText, StringComparison.Ordinal);
         Assert.DoesNotContain("policy=shadowed-policy", logText, StringComparison.Ordinal);
-        Assert.Contains("test completed. atomicProcessed: 3, nonShadowedChecked: 2, shadowedChecked: 1, warnings: 1, informationals: 0", logText, StringComparison.Ordinal);
+        Assert.Contains("test completed. atomicProcessed: 3, nonShadowedChecked: 2, shadowedChecked: 1, warningDiagnostics: 1, informationalDiagnostics: 0", logText, StringComparison.Ordinal);
     }
 
     private static string CaptureInformationLog(Action action)

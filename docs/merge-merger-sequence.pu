@@ -4,7 +4,7 @@ title Merge Merger Sequence
 participant "SecurityPolicyMergeRunner.FlushPartitionAfterShadowing" as RunnerFlush
 participant "SecurityPolicyShadowAnalyzer" as ShadowAnalyzer
 participant "SecurityPolicyContainment" as Containment
-participant "IWriteRepository<MergedSecurityPolicy>" as MergedRepo
+participant "emitMergedPolicies callback" as Output
 
 participant "SecurityPolicyMerger" as Merger
 participant "AtomicMergeCandidateDeduplicator" as Deduplicator
@@ -161,8 +161,8 @@ end
 Merger --> RunnerFlush : merged policies
 deactivate Merger
 
-RunnerFlush -> MergedRepo : AppendRange(mergedPolicies)
-MergedRepo --> RunnerFlush : void
+RunnerFlush --> Output : emitMergedPolicies(mergedPolicies)
+Output --> RunnerFlush : void
 RunnerFlush -> RunnerFlush : partitionCandidates.Clear()
 RunnerFlush --> RunnerFlush : flushed policies
 

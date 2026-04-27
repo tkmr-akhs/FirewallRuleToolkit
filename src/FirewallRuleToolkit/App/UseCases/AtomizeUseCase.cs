@@ -6,6 +6,11 @@
 internal static class AtomizeUseCase
 {
     /// <summary>
+    /// 進捗通知を行う入力ポリシー件数の間隔です。
+    /// </summary>
+    private const int ProgressReportInterval = 200;
+
+    /// <summary>
     /// データベース内のルールを原子的な単位へ分解します。
     /// </summary>
     /// <param name="threshold">分解時のしきい値。</param>
@@ -27,8 +32,15 @@ internal static class AtomizeUseCase
 
         var logger = ProgramLogger.GetLogger(null, null, null);
         var runner = new SecurityPolicyAtomizeRunner(securityPolicyResolver, threshold, logger);
-        reportProgress ??= processedCount =>
-            logger.LogInformation("atomize progress. processed source policies: {ProcessedCount}", processedCount);
+        var progressReporter = reportProgress ?? (processedCount =>
+            logger.LogInformation("atomize progress. processed source policies: {ProcessedCount}", processedCount));
+        Action<int> onSourcePolicyProcessed = processedCount =>
+        {
+            if (processedCount % ProgressReportInterval == 0)
+            {
+                progressReporter(processedCount);
+            }
+        };
 
         sourceSecurityPolicies.EnsureAvailable();
 
@@ -37,9 +49,9 @@ internal static class AtomizeUseCase
 
         runner.Run(
             sourceSecurityPolicies.GetAll(),
-            writeSession.AtomicPolicies.AppendRange,
-            reportProgress,
-            skippedPolicy =>
+            emitAtomicPolicies: writeSession.AtomicPolicies.AppendRange,
+            onSourcePolicyProcessed: onSourcePolicyProcessed,
+            reportSkippedPolicy: skippedPolicy =>
                 logger.LogWarning(
                     "atomize skipped policy. policy: {PolicyName}, index: {PolicyIndex}, reason: {Reason}",
                     skippedPolicy.PolicyName,

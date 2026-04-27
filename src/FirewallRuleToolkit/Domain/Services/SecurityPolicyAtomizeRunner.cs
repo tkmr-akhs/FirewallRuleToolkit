@@ -7,11 +7,6 @@ namespace FirewallRuleToolkit.Domain.Services;
 /// </summary>
 internal sealed class SecurityPolicyAtomizeRunner
 {
-    /// <summary>
-    /// 進捗通知を行う入力ポリシー件数の間隔です。
-    /// </summary>
-    private const int ProgressReportInterval = 200;
-
     private readonly SecurityPolicyResolver securityPolicyResolver;
     private readonly SecurityPolicyAtomizer atomizer;
 
@@ -54,18 +49,18 @@ internal sealed class SecurityPolicyAtomizeRunner
     /// 入力ポリシー群を処理し、atomic 出力を追記します。
     /// </summary>
     /// <param name="importedSecurityPolicies">分解対象の入力ポリシー列。</param>
-    /// <param name="appendAtomicPolicies">atomic ポリシーの追記先。</param>
-    /// <param name="reportProgress">入力ポリシー処理進捗の通知先。</param>
+    /// <param name="emitAtomicPolicies">生成した atomic ポリシー batch の通知先。</param>
+    /// <param name="onSourcePolicyProcessed">入力ポリシー 1 件の処理完了通知先。</param>
     /// <param name="reportSkippedPolicy">スキップした入力ポリシーの通知先。</param>
     /// <returns>実行結果の要約。</returns>
     public SecurityPolicyAtomizeRunResult Run(
         IEnumerable<ImportedSecurityPolicy> importedSecurityPolicies,
-        Action<IEnumerable<AtomicSecurityPolicy>> appendAtomicPolicies,
-        Action<int>? reportProgress = null,
+        PolicyBatchEmitter<AtomicSecurityPolicy> emitAtomicPolicies,
+        Action<int>? onSourcePolicyProcessed = null,
         Action<SkippedPolicy>? reportSkippedPolicy = null)
     {
         ArgumentNullException.ThrowIfNull(importedSecurityPolicies);
-        ArgumentNullException.ThrowIfNull(appendAtomicPolicies);
+        ArgumentNullException.ThrowIfNull(emitAtomicPolicies);
 
         var processedSourcePolicyCount = 0;
         var skippedSourcePolicyCount = 0;
@@ -98,13 +93,10 @@ internal sealed class SecurityPolicyAtomizeRunner
 
             if (shouldAppend)
             {
-                appendAtomicPolicies(atomizedPolicies);
+                emitAtomicPolicies(atomizedPolicies);
             }
 
-            if (processedSourcePolicyCount % ProgressReportInterval == 0)
-            {
-                reportProgress?.Invoke(processedSourcePolicyCount);
-            }
+            onSourcePolicyProcessed?.Invoke(processedSourcePolicyCount);
         }
 
         return new SecurityPolicyAtomizeRunResult

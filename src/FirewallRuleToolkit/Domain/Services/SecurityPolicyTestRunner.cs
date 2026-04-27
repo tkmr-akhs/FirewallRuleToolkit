@@ -8,11 +8,6 @@ namespace FirewallRuleToolkit.Domain.Services;
 /// </summary>
 internal sealed class SecurityPolicyTestRunner
 {
-    /// <summary>
-    /// 進捗通知を行う Atomic ポリシー件数の間隔です。
-    /// </summary>
-    private const int ProgressReportInterval = 2000;
-
     private readonly SecurityPolicyTester tester;
 
     /// <summary>
@@ -57,15 +52,33 @@ internal sealed class SecurityPolicyTestRunner
     }
 
     /// <summary>
+    /// 検査結果の診断重要度です。
+    /// </summary>
+    public enum DiagnosticSeverity
+    {
+        /// <summary>
+        /// 情報として扱う診断を表します。
+        /// </summary>
+        Informational,
+
+        /// <summary>
+        /// 警告として扱う診断を表します。
+        /// </summary>
+        Warning
+    }
+
+    /// <summary>
     /// Atomic ポリシー 1 件に対する検査結果です。
     /// </summary>
     /// <param name="AtomicPolicy">検査対象の Atomic ポリシー。</param>
     /// <param name="IsShadowed">shadowed に分類された場合は <see langword="true"/>。</param>
+    /// <param name="Severity">診断重要度。</param>
     /// <param name="Kind">検査結果の種別。</param>
     /// <param name="MatchedMergedPolicy">最初にヒットした merged。未ヒット時は <see langword="null"/>。</param>
     public readonly record struct Finding(
         AtomicSecurityPolicy AtomicPolicy,
         bool IsShadowed,
+        DiagnosticSeverity Severity,
         FindingKind Kind,
         MergedSecurityPolicy? MatchedMergedPolicy);
 
@@ -79,13 +92,13 @@ internal sealed class SecurityPolicyTestRunner
     /// <param name="atomicPoliciesOrderedForMerge">`FromZone`、`ToZone`、`Service.Kind`、`OriginalIndex` の順で並び、同じ merge パーティションが連続するよう整列された Atomic ポリシー列。</param>
     /// <param name="mergedPolicies">検査対象の merged ポリシー列。</param>
     /// <param name="reportFinding">不一致報告先。</param>
-    /// <param name="reportProgress">進捗通知先。</param>
+    /// <param name="onAtomicPolicyProcessed">Atomic ポリシー 1 件の処理完了通知先。</param>
     /// <returns>検査結果の要約。</returns>
     public SecurityPolicyTestRunResult Run(
         IEnumerable<AtomicSecurityPolicy> atomicPoliciesOrderedForMerge,
         IEnumerable<MergedSecurityPolicy> mergedPolicies,
         Action<Finding>? reportFinding = null,
-        Action<long>? reportProgress = null)
+        Action<long>? onAtomicPolicyProcessed = null)
     {
         ArgumentNullException.ThrowIfNull(atomicPoliciesOrderedForMerge);
         ArgumentNullException.ThrowIfNull(mergedPolicies);
@@ -103,16 +116,13 @@ internal sealed class SecurityPolicyTestRunner
         long processedAtomicCount = 0;
         long nonShadowedAtomicCount = 0;
         long shadowedAtomicCount = 0;
-        long warningCount = 0;
-        long informationalCount = 0;
+        long warningDiagnosticCount = 0;
+        long informationalDiagnosticCount = 0;
 
         foreach (var classification in classificationsOrderedByOriginalIndex)
         {
             processedAtomicCount++;
-            if (processedAtomicCount % ProgressReportInterval == 0)
-            {
-                reportProgress?.Invoke(processedAtomicCount);
-            }
+            onAtomicPolicyProcessed?.Invoke(processedAtomicCount);
 
             if (classification.IsShadowed)
             {
@@ -129,19 +139,24 @@ internal sealed class SecurityPolicyTestRunner
                 continue;
             }
 
+            var severity = classification.IsShadowed
+                ? DiagnosticSeverity.Informational
+                : DiagnosticSeverity.Warning;
+
             reportFinding(new Finding(
                 classification.Policy,
                 classification.IsShadowed,
+                severity,
                 testResult.FindingKind ?? throw new InvalidOperationException("Missing finding kind for mismatched result."),
                 testResult.MatchedMergedPolicy));
 
-            if (classification.IsShadowed)
+            if (severity == DiagnosticSeverity.Informational)
             {
-                informationalCount++;
+                informationalDiagnosticCount++;
             }
             else
             {
-                warningCount++;
+                warningDiagnosticCount++;
             }
         }
 
@@ -150,8 +165,8 @@ internal sealed class SecurityPolicyTestRunner
             ProcessedAtomicCount = processedAtomicCount,
             NonShadowedAtomicCount = nonShadowedAtomicCount,
             ShadowedAtomicCount = shadowedAtomicCount,
-            WarningCount = warningCount,
-            InformationalCount = informationalCount
+            WarningDiagnosticCount = warningDiagnosticCount,
+            InformationalDiagnosticCount = informationalDiagnosticCount
         };
     }
 

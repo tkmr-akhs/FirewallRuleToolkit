@@ -15,11 +15,6 @@
 
 ## 高優先度
 
-- [ ] [ref] Domain runner と UseCase の責務境界を整理する。
-  - `SecurityPolicyAtomizeRunner` / `SecurityPolicyMergeRunner` / `SecurityPolicyTestRunner` が進捗間隔、スキップ扱い、repository 追記 callback、実行件数集計を持っており、Domain service がバッチ実行手順まで知っている。
-  - `SecurityPolicyAtomizer` / `SecurityPolicyMerger` / containment / test 判定の純粋な業務ロジックと、App 側の transaction / progress / warning policy を分けたい。
-  - 方針案: Domain は変換・判定結果と diagnostic value を返し、UseCase が列挙、書き込み、進捗、ログ変換を担当する。
-
 - [ ] [ref] address / service / application の集合演算 API を Domain に集約する。
   - containment は `SecurityPolicyContainment`、差分/和集合は `HighSimilarityPolicyRecomposer`、CIDR 判定や表示用変換は exporter 側に分散している。
   - 方針案: `AddressRangeSet` / `ServiceConditionSet` / `ApplicationSet` などに contains / union / intersect / subtract / format 用の明示的な責務境界を持たせる。
@@ -291,7 +286,7 @@
 - `GroupId` の必須化は対応しない決定済みだが、`GroupId` という名前が表す用途の整理は別課題として残す。
 - `wkpthreshold = 0` は許容する決定済みで、残課題は `wkport = 0` の親切エラーに限定する。
 - `test` の双方向検証 / first-hit equivalence と、`merged` の canonical order 整理は近いが重複ではない。前者は検証モデル、後者は repository / export / test 間の順序契約を扱う。
-- Domain runner の責務整理と logger 依存の整理は近いが重複ではない。前者は batch orchestration の所在、後者は診断出力の層依存を扱う。
+- Domain runner の責務整理は対応済み。logger 依存の整理は、batch orchestration の所在ではなく診断出力の層依存を扱う。
 - metadata の課題は現行コードでは `IToolMetadataRepository` に限定する。旧称の `IImportMetadataRepository` / `IAppMetadataRepository` は現存しないため TODO から外した。
 - `merged export のアドレスグループ再利用任意化` と `AddressGroupCompactor の候補生成整理` は近いが重複ではない。前者は export の利用者向け出力方針、後者は compaction algorithm と候補入力の整合性を扱う。
 - `merged export の service object / service group 名復元方針` は、`Palo Alto の Service 列モデル分離` と近いが重複ではない。前者は出力時の表示・復元方針、後者は入力表現と解決後条件の境界を扱う。
@@ -367,6 +362,13 @@
 ## 対応済み事項
 
 ### 高優先度だったもの
+
+- [x] [ref] Domain runner と UseCase の責務境界を整理する。
+  - `SecurityPolicyAtomizeRunner` / `SecurityPolicyMergeRunner` / `SecurityPolicyTestRunner` が進捗間隔、スキップ扱い、repository 追記 callback、実行件数集計を持っており、Domain service がバッチ実行手順まで知っている。
+  - 対応内容: runner は Domain workflow として Domain に残しつつ、進捗通知間隔は UseCase 側へ移した。Domain runner は処理件数 event (`onSourcePolicyProcessed` / `onAtomicPolicyProcessed`) だけを通知する。
+  - 対応内容: `append*` callback は永続化を連想する名前を避け、生成物 batch を流す `PolicyBatchEmitter<TPolicy>` と `emitAtomicPolicies` / `emitMergedPolicies` に寄せた。
+  - 対応内容: `WrittenMergedCount` は `ProducedMergedCount` に変更し、test 結果の warning / informational 件数は diagnostic severity として `WarningDiagnosticCount` / `InformationalDiagnosticCount` に寄せた。
+  - 補足: logger 依存の整理、順序契約の型表現、runner 出力をさらに batch stream へ発展させるかどうかは別 TODO として扱う。
 
 - [x] [ref] 正規化処理の責務を整理する。
   - `SecurityPolicyAtomizer`、`SecurityPolicyMerger`、各 repository / exporter に類似の normalize / distinct / sort が分散している。

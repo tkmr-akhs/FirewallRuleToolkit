@@ -21,12 +21,12 @@ internal sealed class SecurityPolicyTestRunResult
     public long ShadowedAtomicCount { get; init; }
 
     /// <summary>
-    /// warning として記録した件数を取得します。
+    /// warning 重要度の診断件数を取得します。
     /// </summary>
-    public long WarningCount { get; init; }
+    public long WarningDiagnosticCount { get; init; }
 
     /// <summary>
-    /// informational として記録した件数を取得します。
+    /// informational 重要度の診断件数を取得します。
     /// </summary>
-    public long InformationalCount { get; init; }
+    public long InformationalDiagnosticCount { get; init; }
 }

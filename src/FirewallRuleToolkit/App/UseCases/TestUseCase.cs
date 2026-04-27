@@ -6,6 +6,11 @@
 internal static class TestUseCase
 {
     /// <summary>
+    /// 進捗通知を行う Atomic ポリシー件数の間隔です。
+    /// </summary>
+    private const int ProgressReportInterval = 2000;
+
+    /// <summary>
     /// merged 出力が Atomic ポリシーの挙動を保持しているかを検査します。
     /// </summary>
     /// <param name="sourceAtomicPolicies">merge 用順序で Atomic ポリシーを提供する repository。</param>
@@ -22,8 +27,15 @@ internal static class TestUseCase
 
         var logger = ProgramLogger.GetLogger(null, null, null);
         var runner = new SecurityPolicyTestRunner(logger);
-        reportProgress ??= processedAtomicCount =>
-            logger.LogInformation("test progress. processed atomic policies: {ProcessedAtomicCount}", processedAtomicCount);
+        var progressReporter = reportProgress ?? (processedAtomicCount =>
+            logger.LogInformation("test progress. processed atomic policies: {ProcessedAtomicCount}", processedAtomicCount));
+        Action<long> onAtomicPolicyProcessed = processedAtomicCount =>
+        {
+            if (processedAtomicCount % ProgressReportInterval == 0)
+            {
+                progressReporter(processedAtomicCount);
+            }
+        };
 
         sourceAtomicPolicies.EnsureAvailable();
         sourceMergedPolicies.EnsureAvailable();
@@ -34,15 +46,15 @@ internal static class TestUseCase
             sourceAtomicPolicies.GetAllOrderedForMerge(),
             sourceMergedPolicies.GetAll(),
             finding => LogFinding(logger, finding),
-            reportProgress);
+            onAtomicPolicyProcessed: onAtomicPolicyProcessed);
 
         logger.LogInformation(
-            "test completed. atomicProcessed: {AtomicProcessed}, nonShadowedChecked: {NonShadowedChecked}, shadowedChecked: {ShadowedChecked}, warnings: {WarningCount}, informationals: {InformationalCount}",
+            "test completed. atomicProcessed: {AtomicProcessed}, nonShadowedChecked: {NonShadowedChecked}, shadowedChecked: {ShadowedChecked}, warningDiagnostics: {WarningDiagnosticCount}, informationalDiagnostics: {InformationalDiagnosticCount}",
             result.ProcessedAtomicCount,
             result.NonShadowedAtomicCount,
             result.ShadowedAtomicCount,
-            result.WarningCount,
-            result.InformationalCount);
+            result.WarningDiagnosticCount,
+            result.InformationalDiagnosticCount);
 
         return 0;
     }
@@ -77,7 +89,7 @@ internal static class TestUseCase
         SecurityPolicyTestRunner.Finding finding)
     {
         var atomicPolicy = finding.AtomicPolicy;
-        if (finding.IsShadowed)
+        if (finding.Severity == SecurityPolicyTestRunner.DiagnosticSeverity.Informational)
         {
             logger.LogInformation(
                 "test info: shadowed atomic policy is not directly represented in merged output. policy={PolicyName}, index={PolicyIndex}, action={AtomicAction}, fromZone={FromZone}, toZone={ToZone}, application={Application}",
@@ -113,7 +125,7 @@ internal static class TestUseCase
         var matchedMergedPolicy = finding.MatchedMergedPolicy
             ?? throw new InvalidOperationException("Action mismatch finding must have matched merged policy.");
 
-        if (finding.IsShadowed)
+        if (finding.Severity == SecurityPolicyTestRunner.DiagnosticSeverity.Informational)
         {
             logger.LogInformation(
                 "test info: shadowed atomic policy matched merged output but action differed. policy={PolicyName}, index={PolicyIndex}, atomicAction={AtomicAction}, mergedAction={MergedAction}, mergedRange=[{MergedMinimumIndex}-{MergedMaximumIndex}], fromZone={FromZone}, toZone={ToZone}, application={Application}",

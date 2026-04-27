@@ -35,15 +35,15 @@ MergedRepo --> UseCase : void
 UseCase -> AtomicRepo : GetAllOrderedForMerge()
 AtomicRepo --> UseCase : atomic policies in merge order
 
-UseCase -> Runner : Run(\natomicPoliciesOrderedForMerge,\nMergedRepo.AppendRange,\nreportProgress)
+UseCase -> Runner : Run(\natomicPoliciesOrderedForMerge,\nemitMergedPolicies,\nonAtomicPolicyProcessed)
 activate Runner
 
 loop each atomic policy in merge order
   Runner -> Runner : processedAtomicCount++
+  Runner --> UseCase : onAtomicPolicyProcessed(processedAtomicCount)
 
   alt progress threshold reached
-    Runner --> UseCase : reportProgress(processedAtomicCount)
-    UseCase --> Runner : void
+    UseCase -> UseCase : reportProgress(processedAtomicCount)
   end
 
   Runner -> PartitionKey : FromAtomic(atomicPolicy)
@@ -154,11 +154,13 @@ loop each atomic policy in merge order
     Merger --> Runner : merged policies
     deactivate Merger
 
-    Runner -> MergedRepo : AppendRange(mergedPolicies)
-    MergedRepo --> Runner : void
+    Runner --> UseCase : emitMergedPolicies(mergedPolicies)
+    UseCase -> MergedRepo : AppendRange(mergedPolicies)
+    MergedRepo --> UseCase : void
+    UseCase --> Runner : void
     Runner -> Runner : partitionCandidates.Clear()
     Runner -> Runner : AppendMergeRanges(mergedRanges, mergedPolicies)
-    Runner -> Runner : writtenMergedCount += mergedPolicies.Length
+    Runner -> Runner : producedMergedCount += mergedPolicies.Length
     Runner -> Runner : processedPartitionCount++
     Runner -> Runner : currentPartition = nextPartition
   else same merge partition
@@ -171,7 +173,7 @@ loop each atomic policy in merge order
 end
 
 alt last merge partition exists
-  Runner -> Runner : FlushPartitionAfterShadowing(partitionCandidates, appendMergedPolicies)
+  Runner -> Runner : FlushPartitionAfterShadowing(partitionCandidates, emitMergedPolicies)
 end
 
 Runner -> Runner : FindActionRangeOverlaps(mergedRanges)

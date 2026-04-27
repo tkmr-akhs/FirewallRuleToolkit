@@ -59,6 +59,8 @@ package "Domain.Services" {
     -AbsorbShadowedAtomicPolicy(...)
   }
 
+  class "PolicyBatchEmitter<TPolicy>" as PolicyBatchEmitter <<delegate>>
+
   class SecurityPolicyMerger <<service>> {
     +MergePartition(...) : IReadOnlyList<MergedSecurityPolicy>
     -MergeAllowPolicies(...)
@@ -189,7 +191,7 @@ package "Domain.Services.Results" {
   class SecurityPolicyMergeRunResult <<result>> {
     +ProcessedAtomicCount : long
     +ProcessedPartitionCount : long
-    +WrittenMergedCount : long
+    +ProducedMergedCount : long
     +ActionRangeOverlaps : IReadOnlyList<ActionRangeOverlap>
   }
 
@@ -338,6 +340,7 @@ SecurityPolicyMergeRunner ..> SecurityPolicyShadowAnalyzer : analyze
 SecurityPolicyMergeRunner ..> SecurityPolicyMergeRunResult : returns
 SecurityPolicyMergeRunner ..> AtomicMergeCandidate
 SecurityPolicyMergeRunner ..> MergedSecurityPolicy
+SecurityPolicyMergeRunner ..> PolicyBatchEmitter : emit
 
 SecurityPolicyMerger *-- ServiceMerger
 SecurityPolicyMerger *-- SourceAddressMerger

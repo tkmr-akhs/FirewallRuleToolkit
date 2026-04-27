@@ -16,9 +16,9 @@ internal sealed class SecurityPolicyMergeRunResult
     public long ProcessedPartitionCount { get; init; }
 
     /// <summary>
-    /// 書き込んだ merged ポリシー件数を取得します。
+    /// 生成した merged ポリシー件数を取得します。
     /// </summary>
-    public long WrittenMergedCount { get; init; }
+    public long ProducedMergedCount { get; init; }
 
     /// <summary>
     /// アクション衝突の一覧を取得します。

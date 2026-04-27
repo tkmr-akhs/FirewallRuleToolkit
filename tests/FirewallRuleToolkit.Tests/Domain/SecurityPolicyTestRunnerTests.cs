@@ -22,8 +22,8 @@ public sealed class SecurityPolicyTestRunnerTests
         Assert.Equal(1, result.ProcessedAtomicCount);
         Assert.Equal(1, result.NonShadowedAtomicCount);
         Assert.Equal(0, result.ShadowedAtomicCount);
-        Assert.Equal(0, result.WarningCount);
-        Assert.Equal(0, result.InformationalCount);
+        Assert.Equal(0, result.WarningDiagnosticCount);
+        Assert.Equal(0, result.InformationalDiagnosticCount);
         Assert.Empty(findings);
     }
 
@@ -41,8 +41,8 @@ public sealed class SecurityPolicyTestRunnerTests
         Assert.Equal(1, result.ProcessedAtomicCount);
         Assert.Equal(1, result.NonShadowedAtomicCount);
         Assert.Equal(0, result.ShadowedAtomicCount);
-        Assert.Equal(0, result.WarningCount);
-        Assert.Equal(0, result.InformationalCount);
+        Assert.Equal(0, result.WarningDiagnosticCount);
+        Assert.Equal(0, result.InformationalDiagnosticCount);
         Assert.Empty(findings);
     }
 
@@ -66,8 +66,8 @@ public sealed class SecurityPolicyTestRunnerTests
         Assert.Equal(1, result.ProcessedAtomicCount);
         Assert.Equal(1, result.NonShadowedAtomicCount);
         Assert.Equal(0, result.ShadowedAtomicCount);
-        Assert.Equal(0, result.WarningCount);
-        Assert.Equal(0, result.InformationalCount);
+        Assert.Equal(0, result.WarningDiagnosticCount);
+        Assert.Equal(0, result.InformationalDiagnosticCount);
         Assert.Empty(findings);
     }
 
@@ -93,8 +93,8 @@ public sealed class SecurityPolicyTestRunnerTests
         Assert.Equal(1, result.ProcessedAtomicCount);
         Assert.Equal(1, result.NonShadowedAtomicCount);
         Assert.Equal(0, result.ShadowedAtomicCount);
-        Assert.Equal(0, result.WarningCount);
-        Assert.Equal(0, result.InformationalCount);
+        Assert.Equal(0, result.WarningDiagnosticCount);
+        Assert.Equal(0, result.InformationalDiagnosticCount);
         Assert.Empty(findings);
     }
 
@@ -112,11 +112,12 @@ public sealed class SecurityPolicyTestRunnerTests
         Assert.Equal(1, result.ProcessedAtomicCount);
         Assert.Equal(1, result.NonShadowedAtomicCount);
         Assert.Equal(0, result.ShadowedAtomicCount);
-        Assert.Equal(1, result.WarningCount);
-        Assert.Equal(0, result.InformationalCount);
+        Assert.Equal(1, result.WarningDiagnosticCount);
+        Assert.Equal(0, result.InformationalDiagnosticCount);
 
         var finding = Assert.Single(findings);
         Assert.False(finding.IsShadowed);
+        Assert.Equal(SecurityPolicyTestRunner.DiagnosticSeverity.Warning, finding.Severity);
         Assert.Equal(SecurityPolicyTestRunner.FindingKind.MissingContainingMergedPolicy, finding.Kind);
         Assert.Null(finding.MatchedMergedPolicy);
         Assert.Equal((uint)10, finding.AtomicPolicy.OriginalIndex);
@@ -133,11 +134,12 @@ public sealed class SecurityPolicyTestRunnerTests
             [CreateMergedPolicy(minimumIndex: 10, maximumIndex: 10, action: SecurityPolicyAction.Deny)],
             findings.Add);
 
-        Assert.Equal(1, result.WarningCount);
-        Assert.Equal(0, result.InformationalCount);
+        Assert.Equal(1, result.WarningDiagnosticCount);
+        Assert.Equal(0, result.InformationalDiagnosticCount);
 
         var finding = Assert.Single(findings);
         Assert.False(finding.IsShadowed);
+        Assert.Equal(SecurityPolicyTestRunner.DiagnosticSeverity.Warning, finding.Severity);
         Assert.Equal(SecurityPolicyTestRunner.FindingKind.ActionMismatch, finding.Kind);
         Assert.NotNull(finding.MatchedMergedPolicy);
         Assert.Equal(SecurityPolicyAction.Deny, finding.MatchedMergedPolicy?.Action);
@@ -192,8 +194,8 @@ public sealed class SecurityPolicyTestRunnerTests
         Assert.Equal(2, result.ProcessedAtomicCount);
         Assert.Equal(1, result.NonShadowedAtomicCount);
         Assert.Equal(1, result.ShadowedAtomicCount);
-        Assert.Equal(0, result.WarningCount);
-        Assert.Equal(0, result.InformationalCount);
+        Assert.Equal(0, result.WarningDiagnosticCount);
+        Assert.Equal(0, result.InformationalDiagnosticCount);
         Assert.Empty(findings);
     }
 
@@ -217,18 +219,18 @@ public sealed class SecurityPolicyTestRunnerTests
         ],
             findings.Add);
 
-        Assert.Equal(0, result.WarningCount);
-        Assert.Equal(0, result.InformationalCount);
+        Assert.Equal(0, result.WarningDiagnosticCount);
+        Assert.Equal(0, result.InformationalDiagnosticCount);
         Assert.Empty(findings);
     }
 
     [Fact]
-    public void Run_WhenProcessedCountReachesInterval_ReportsProgressEvery2000AtomicPolicies()
+    public void Run_WhenAtomicPolicyProcessed_ReportsProcessedCountForEachAtomicPolicy()
     {
         var runner = new SecurityPolicyTestRunner();
         var reportedCounts = new List<long>();
 
-        var atomicPolicies = Enumerable.Range(1, 4500)
+        var atomicPolicies = Enumerable.Range(1, 3)
             .Select(index => CreateAtomicPolicy(
                 originalIndex: (uint)index,
                 originalPolicyName: $"policy-{index}",
@@ -254,10 +256,10 @@ public sealed class SecurityPolicyTestRunnerTests
         var result = runner.Run(
             atomicPolicies,
             mergedPolicies,
-            reportProgress: reportedCounts.Add);
+            onAtomicPolicyProcessed: reportedCounts.Add);
 
-        Assert.Equal(4500, result.ProcessedAtomicCount);
-        Assert.Equal([2000L, 4000L], reportedCounts);
+        Assert.Equal(3, result.ProcessedAtomicCount);
+        Assert.Equal([1L, 2L, 3L], reportedCounts);
     }
 
     private static AtomicSecurityPolicy CreateAtomicPolicy(
