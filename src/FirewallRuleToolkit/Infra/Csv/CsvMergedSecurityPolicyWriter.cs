@@ -256,7 +256,7 @@ public sealed class CsvMergedSecurityPolicyWriter : IWriteRepository<MergedSecur
             return GetProtocolName(start);
         }
 
-        return $"{GetProtocolName(start)}-{GetProtocolName(finish)}";
+        return $"{start}-{finish}";
     }
 
     private static bool IsAnyProtocolRange(uint start, uint finish)

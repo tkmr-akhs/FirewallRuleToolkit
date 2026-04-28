@@ -15,11 +15,6 @@
 
 ## 高優先度
 
-- [ ] [ux] merged service export のプロトコル範囲表記を整理する。
-  - `CsvMergedSecurityPolicyWriter` はプロトコル範囲の両端をプロトコル名へ変換するため、`1-17` が `icmp-udp` のような表記になり得る。
-  - `ServiceValueParser` の直指定サービス parser はプロトコル名を範囲端点として扱わないため、レビュー用としても再利用用としても意味が読み取りづらい。
-  - 方針案: 範囲は数値表記に固定し、プロトコル名は単一値だけに使う。
-
 - [ ] [ux] merged export の address / service 表示順を安定化する。
   - セット由来の値が出力される場合、差分レビューでノイズになる可能性がある。
   - 方針案: Domain の canonical order と exporter の表示順を定義する。
@@ -358,6 +353,11 @@
 ## 対応済み事項
 
 ### 高優先度だったもの
+
+- [x] [ux] merged service export のプロトコル範囲表記を整理する。
+  - `CsvMergedSecurityPolicyWriter` はプロトコル範囲の両端をプロトコル名へ変換するため、`1-17` が `icmp-udp` のような表記になり得る。
+  - 対応内容: merged CSV の 3 軸指定サービスでは、プロトコル名は単一プロトコルだけに使い、プロトコル範囲は `1-17` のような数値範囲で出力するようにした。
+  - 対応内容: `1-17` が `icmp-udp` にならないことを `CsvMergedSecurityPolicyWriter` のテストで固定した。
 
 - [x] [ref] address / service / application の集合演算 API を Domain に集約する。
   - containment は `SecurityPolicyContainment`、差分/和集合は `HighSimilarityPolicyRecomposer`、CIDR 判定や表示用変換は exporter 側に分散している。

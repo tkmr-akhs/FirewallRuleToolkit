@@ -206,6 +206,62 @@ public sealed class CsvMergedSecurityPolicyWriterTests
     }
 
     [Fact]
+    public void ReplaceAll_WhenProtocolRangeEndpointsHaveKnownNames_WritesNumericProtocolRange()
+    {
+        var path = CreateTempFilePath();
+
+        try
+        {
+            IWriteRepository<MergedSecurityPolicy> writer = new CsvMergedSecurityPolicyWriter(path, new CsvOptions
+            {
+                NewLineMode = CsvNewLineMode.Lf,
+                Encoding = new UTF8Encoding(false)
+            });
+
+            writer.ReplaceAll([
+                new MergedSecurityPolicy
+                {
+                    FromZones = new HashSet<string>(StringComparer.Ordinal) { "trust" },
+                    SourceAddresses = [
+                        new AddressValue { Start = 0, Finish = uint.MaxValue }
+                    ],
+                    ToZones = new HashSet<string>(StringComparer.Ordinal) { "untrust" },
+                    DestinationAddresses = [
+                        new AddressValue { Start = 0, Finish = uint.MaxValue }
+                    ],
+                    Applications = new HashSet<string>(StringComparer.Ordinal) { "any" },
+                    Services = [
+                        new ServiceValue
+                        {
+                            ProtocolStart = 1,
+                            ProtocolFinish = 17,
+                            SourcePortStart = 0,
+                            SourcePortFinish = 65535,
+                            DestinationPortStart = 0,
+                            DestinationPortFinish = 65535,
+                            Kind = null
+                        }
+                    ],
+                    Action = SecurityPolicyAction.Allow,
+                    GroupId = string.Empty,
+                    MinimumIndex = 1,
+                    MaximumIndex = 1,
+                    OriginalPolicyNames = new HashSet<string>(StringComparer.Ordinal) { "p1" }
+                }
+            ]);
+
+            var content = File.ReadAllText(path, new UTF8Encoding(false));
+
+            Assert.Contains("\"1-17 any any\"", content, StringComparison.Ordinal);
+            Assert.DoesNotContain("icmp-udp", content, StringComparison.Ordinal);
+        }
+        finally
+        {
+            DeleteIfExists(path);
+        }
+    }
+
+    [Fact]
     public void ReplaceAll_WhenSourceAddressesMatchImportedGroup_WritesGroupNamePlusRemainingAddresses()
     {
         var path = CreateTempFilePath();
