@@ -1,4 +1,4 @@
-namespace FirewallRuleToolkit.Domain.Services.PolicyConditions;
+﻿namespace FirewallRuleToolkit.Domain.Services.PolicyConditions;
 
 /// <summary>
 /// アプリケーション条件集合を、設定値としての同一性に基づいて操作します。

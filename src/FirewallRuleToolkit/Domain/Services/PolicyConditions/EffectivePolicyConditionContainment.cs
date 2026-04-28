@@ -1,4 +1,4 @@
-namespace FirewallRuleToolkit.Domain.Services.PolicyConditions;
+﻿namespace FirewallRuleToolkit.Domain.Services.PolicyConditions;
 
 /// <summary>
 /// 実際のルール評価として、片方の条件がもう片方を覆うかを判定します。
