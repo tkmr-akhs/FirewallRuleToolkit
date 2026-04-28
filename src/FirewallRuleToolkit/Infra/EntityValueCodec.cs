@@ -87,7 +87,7 @@ internal static class EntityValueCodec
     {
         ArgumentNullException.ThrowIfNull(originalPolicyNames);
 
-        return JsonSerializer.Serialize(originalPolicyNames.OrderBy(name => name, StringComparer.Ordinal).ToArray());
+        return JsonSerializer.Serialize(PolicyConditionCanonicalOrder.OrderOrdinalStrings(originalPolicyNames).ToArray());
     }
 
     /// <summary>
@@ -114,6 +114,18 @@ internal static class EntityValueCodec
     public static string SerializeStringList(IEnumerable<string> values)
     {
         return JsonSerializer.Serialize(values.ToArray(), JsonOptions);
+    }
+
+    /// <summary>
+    /// 文字列集合を標準順に並べて JSON 文字列へ変換します。
+    /// </summary>
+    /// <param name="values">変換する文字列集合。</param>
+    /// <returns>JSON 文字列。</returns>
+    public static string SerializeStringSet(IEnumerable<string> values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+
+        return JsonSerializer.Serialize(PolicyConditionCanonicalOrder.OrderOrdinalStrings(values).ToArray(), JsonOptions);
     }
 
     /// <summary>
@@ -234,7 +246,7 @@ internal static class EntityValueCodec
     {
         ArgumentNullException.ThrowIfNull(values);
 
-        var payload = values
+        var payload = PolicyConditionCanonicalOrder.OrderAddresses(values)
             .Select(static value => new Dictionary<string, uint>
             {
                 ["s"] = value.Start,
@@ -290,7 +302,7 @@ internal static class EntityValueCodec
     {
         ArgumentNullException.ThrowIfNull(values);
 
-        var payload = values
+        var payload = PolicyConditionCanonicalOrder.OrderServices(values)
             .Select(static value => new Dictionary<string, object?>
             {
                 ["ps"] = value.ProtocolStart,

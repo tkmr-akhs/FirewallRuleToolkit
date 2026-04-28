@@ -83,11 +83,76 @@ public sealed class CsvMergedSecurityPolicyWriterTests
                 '\n',
                 [
                     "\"from_zones\",\"source_addresses\",\"to_zones\",\"destination_addresses\",\"applications\",\"services\",\"action\",\"group_id\",\"minimum_index\",\"maximum_index\",\"original_policy_names\"",
-                    "\"z1, z2\",\"192.168.1.0/24, any\",\"trust\",\"10.0.0.1-10.0.0.10, 10.0.0.1/32\",\"ssl, web-browsing\",\"any, application-default, tcp any 80-90\",\"Allow\",\"G1\",\"10\",\"99\",\"p1, p2\"",
+                    "\"z1, z2\",\"any, 192.168.1.0/24\",\"trust\",\"10.0.0.1/32, 10.0.0.1-10.0.0.10\",\"ssl, web-browsing\",\"any, application-default, tcp any 80-90\",\"Allow\",\"G1\",\"10\",\"99\",\"p1, p2\"",
                     string.Empty
                 ]);
 
             Assert.Equal(expected, content);
+        }
+        finally
+        {
+            DeleteIfExists(path);
+        }
+    }
+
+    [Fact]
+    public void ReplaceAll_OrdersServicesByCanonicalServiceValueInsteadOfFormattedText()
+    {
+        var path = CreateTempFilePath();
+
+        try
+        {
+            IWriteRepository<MergedSecurityPolicy> writer = new CsvMergedSecurityPolicyWriter(path, new CsvOptions
+            {
+                NewLineMode = CsvNewLineMode.Lf,
+                Encoding = new UTF8Encoding(false)
+            });
+
+            writer.ReplaceAll([
+                new MergedSecurityPolicy
+                {
+                    FromZones = new HashSet<string>(StringComparer.Ordinal) { "trust" },
+                    SourceAddresses = [
+                        new AddressValue { Start = 0, Finish = uint.MaxValue }
+                    ],
+                    ToZones = new HashSet<string>(StringComparer.Ordinal) { "untrust" },
+                    DestinationAddresses = [
+                        new AddressValue { Start = 0, Finish = uint.MaxValue }
+                    ],
+                    Applications = new HashSet<string>(StringComparer.Ordinal) { "any" },
+                    Services = [
+                        new ServiceValue
+                        {
+                            ProtocolStart = 6,
+                            ProtocolFinish = 6,
+                            SourcePortStart = 0,
+                            SourcePortFinish = 65535,
+                            DestinationPortStart = 100,
+                            DestinationPortFinish = 100,
+                            Kind = null
+                        },
+                        new ServiceValue
+                        {
+                            ProtocolStart = 6,
+                            ProtocolFinish = 6,
+                            SourcePortStart = 0,
+                            SourcePortFinish = 65535,
+                            DestinationPortStart = 80,
+                            DestinationPortFinish = 80,
+                            Kind = null
+                        }
+                    ],
+                    Action = SecurityPolicyAction.Allow,
+                    GroupId = string.Empty,
+                    MinimumIndex = 1,
+                    MaximumIndex = 1,
+                    OriginalPolicyNames = new HashSet<string>(StringComparer.Ordinal) { "p1" }
+                }
+            ]);
+
+            var content = File.ReadAllText(path, new UTF8Encoding(false));
+
+            Assert.Contains("\"tcp any 80, tcp any 100\"", content, StringComparison.Ordinal);
         }
         finally
         {

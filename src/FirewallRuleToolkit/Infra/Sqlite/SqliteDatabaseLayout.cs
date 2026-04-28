@@ -68,6 +68,14 @@ internal static class SqliteDatabaseLayout
         public const string GroupIdColumn = "group_id";
         public const string OriginalIndexColumn = "original_index";
         public const string OriginalPolicyNameColumn = "original_policy_name";
+        public const string AddressStartJsonPath = "$.s";
+        public const string AddressFinishJsonPath = "$.f";
+        public const string ServiceProtocolStartJsonPath = "$.ps";
+        public const string ServiceProtocolFinishJsonPath = "$.pf";
+        public const string ServiceSourcePortStartJsonPath = "$.ss";
+        public const string ServiceSourcePortFinishJsonPath = "$.sf";
+        public const string ServiceDestinationPortStartJsonPath = "$.ds";
+        public const string ServiceDestinationPortFinishJsonPath = "$.df";
         public const string ServiceKindJsonPath = "$.k";
     }
 

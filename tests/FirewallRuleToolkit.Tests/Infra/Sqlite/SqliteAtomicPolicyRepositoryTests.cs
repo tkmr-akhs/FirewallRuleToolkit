@@ -110,6 +110,48 @@ public sealed class SqliteAtomicPolicyRepositoryTests
     }
 
     [Fact]
+    public void GetAll_OrdersByOriginalIndexZonesActionAndCanonicalConditionTieBreakers()
+    {
+        var databaseDirectory = CreateTempDatabaseDirectory();
+
+        try
+        {
+            var repository = new SqliteAtomicPolicyRepository(databaseDirectory);
+            repository.ReplaceAll(
+            [
+                CreateAtomicPolicy(10, "source-2", sourceStart: 2, destinationStart: 20, application: "z", service: CreateTcpService(80)),
+                CreateAtomicPolicy(10, "kind-service", sourceStart: 9, destinationStart: 20, application: "z", service: CreateKindService()),
+                CreateAtomicPolicy(10, "destination-10", sourceStart: 9, destinationStart: 10, application: "z", service: CreateTcpService(80)),
+                CreateAtomicPolicy(10, "source-1", sourceStart: 1, destinationStart: 20, application: "z", service: CreateTcpService(80)),
+                CreateAtomicPolicy(5, "index-5", sourceStart: 9, destinationStart: 99, application: "z", service: CreateTcpService(80)),
+                CreateAtomicPolicy(10, "application-a", sourceStart: 9, destinationStart: 20, application: "a", service: CreateTcpService(80)),
+                CreateAtomicPolicy(10, "any-service", sourceStart: 9, destinationStart: 20, application: "z", service: CreateAnyService())
+            ]);
+
+            var orderedNames = repository
+                .GetAll()
+                .Select(static policy => policy.OriginalPolicyName)
+                .ToArray();
+
+            Assert.Equal(
+            [
+                "index-5",
+                "destination-10",
+                "any-service",
+                "kind-service",
+                "application-a",
+                "source-1",
+                "source-2"
+            ],
+            orderedNames);
+        }
+        finally
+        {
+            DeleteDatabaseDirectory(databaseDirectory);
+        }
+    }
+
+    [Fact]
     public void GetAllOrderedForMerge_OrdersByMergePartitionOriginalIndexAndStorageOrder()
     {
         var databaseDirectory = CreateTempDatabaseDirectory();
@@ -156,29 +198,66 @@ public sealed class SqliteAtomicPolicyRepositoryTests
         string originalPolicyName,
         string fromZone = "trust",
         string toZone = "untrust",
-        string? serviceKind = "service")
+        string? serviceKind = "service",
+        uint sourceStart = 1,
+        uint destinationStart = 2,
+        string application = "any",
+        ServiceValue? service = null)
     {
         return new AtomicSecurityPolicy
         {
             FromZone = fromZone,
-            SourceAddress = new AddressValue { Start = 1, Finish = 1 },
+            SourceAddress = new AddressValue { Start = sourceStart, Finish = sourceStart },
             ToZone = toZone,
-            DestinationAddress = new AddressValue { Start = 2, Finish = 2 },
-            Application = "any",
-            Service = new ServiceValue
-            {
-                ProtocolStart = 6,
-                ProtocolFinish = 6,
-                SourcePortStart = 0,
-                SourcePortFinish = 65535,
-                DestinationPortStart = 80,
-                DestinationPortFinish = 80,
-                Kind = serviceKind
-            },
+            DestinationAddress = new AddressValue { Start = destinationStart, Finish = destinationStart },
+            Application = application,
+            Service = service ?? CreateTcpService(80, serviceKind),
             Action = SecurityPolicyAction.Allow,
             GroupId = "group-a",
             OriginalIndex = originalIndex,
             OriginalPolicyName = originalPolicyName
+        };
+    }
+
+    private static ServiceValue CreateAnyService()
+    {
+        return new ServiceValue
+        {
+            ProtocolStart = 0,
+            ProtocolFinish = 255,
+            SourcePortStart = 0,
+            SourcePortFinish = 65535,
+            DestinationPortStart = 0,
+            DestinationPortFinish = 65535,
+            Kind = null
+        };
+    }
+
+    private static ServiceValue CreateKindService()
+    {
+        return new ServiceValue
+        {
+            ProtocolStart = 255,
+            ProtocolFinish = 255,
+            SourcePortStart = 0,
+            SourcePortFinish = 0,
+            DestinationPortStart = 0,
+            DestinationPortFinish = 0,
+            Kind = "application-default"
+        };
+    }
+
+    private static ServiceValue CreateTcpService(uint destinationPort, string? kind = null)
+    {
+        return new ServiceValue
+        {
+            ProtocolStart = 6,
+            ProtocolFinish = 6,
+            SourcePortStart = 0,
+            SourcePortFinish = 65535,
+            DestinationPortStart = destinationPort,
+            DestinationPortFinish = destinationPort,
+            Kind = kind
         };
     }
 

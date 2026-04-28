@@ -15,9 +15,10 @@
 
 ## 高優先度
 
-- [ ] [ux] merged export の address / service 表示順を安定化する。
-  - セット由来の値が出力される場合、差分レビューでノイズになる可能性がある。
-  - 方針案: Domain の canonical order と exporter の表示順を定義する。
+- [ ] [spec] merge / test runner の入力順序契約を Domain で検証する。
+  - SQLite repository の `ORDER BY` が大量データのソート責務を持つ一方、Domain runner は処理に必要な順序契約が破られると shadow 判定や first-hit 検証が静かにずれる可能性がある。
+  - 方針案: Domain では再ソートせず、atomic の merge partition 連続性、同一 partition 内の `OriginalIndex` 昇順、merged の `MinimumIndex` / `MaximumIndex` 昇順など、整理処理の正しさに必要な最小契約だけを O(n) で検証する。
+  - 方針案: 宛先アドレス、サービス、アプリケーション、送信元アドレスの canonical tie-breaker 完全一致までは Domain で検証せず、表示安定化・差分安定化の責務として SQL / serializer 側に残す。
 
 ## 中優先度
 
@@ -80,7 +81,6 @@
 - [ ] [ux] action range overlap warning の診断情報を詳細化する。
   - 現在の `SecurityPolicyMergeRunResult.ActionRangeOverlap` は action と最小/最大 index だけを持つため、どの merged rule / 元ポリシー名 / 条件が衝突したかをログから追いにくい。
   - 方針案: overlap 判定用の結果に `OriginalPolicyNames`、`GroupId`、代表条件、merged の識別子を含めるか、詳細レポートへ出力する。
-
 
 ## 低優先度
 
@@ -355,6 +355,15 @@
 ## 対応済み事項
 
 ### 高優先度だったもの
+
+- [x] [ux] import 後の条件集合とポリシー条件の canonical order を定義する。
+  - セット由来の値が保存、比較、出力、診断へ流れる場合、差分レビューやログ確認でノイズになる可能性がある。
+  - 対応内容: Domain に `PolicyConditionCanonicalOrder` を追加し、アドレス、サービス、アプリケーション、通常文字列の標準順を集約した。
+  - 対応内容: merge signature、SQLite の merged JSON 保存、merged CSV export、merge diagnostics が Domain の canonical order を使う形にした。
+  - 対応内容: atomic の通常読み出し SQL と merge 用読み出し SQL に、宛先アドレス、サービス、アプリケーション、送信元アドレスの条件 tie-breaker を追加した。
+  - 対応内容: `SecurityPolicyTestRunner` は merged / atomic の入力列を再ソートせず、repository の順序契約を使う形にした。
+  - 対応内容: `product-spec.md` と PlantUML に、Domain の部品内 canonical order と SQL repository のルール行ソート責務を反映した。
+  - 議論概要: import は元データ取り込みなので参照リスト順を保持する一方、atomize 以降は差分レビューしやすい標準順を使う方針にした。サービスは `any`、`Kind`、3 軸指定の順、3 軸指定内は protocol number、destination port start/end、source port start/end の順とした。ポリシー行は atomic では宛先アドレス、サービス、アプリケーション、送信元アドレスを条件 tie-breaker にできるが、merged は first-hit と traceability の都合で `MinimumIndex` / `MaximumIndex` / 保存順を主契約にする。大量データのルール行ソートは Domain ではなく SQL の `ORDER BY` に任せる。
 
 - [x] [bug] `merged` の読み出し順と first-hit 検証順を揃える。
   - `SecurityPolicyTestRunner` は `MinimumIndex`、`MaximumIndex` の順で first-hit を選ぶ一方、`SqliteMergedSecurityPolicyRepository.GetAll()` は `MinimumIndex`、`rowid` の順で返していた。

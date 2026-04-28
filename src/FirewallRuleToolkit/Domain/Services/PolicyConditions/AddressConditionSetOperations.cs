@@ -82,9 +82,7 @@ internal static class AddressConditionSetOperations
         ArgumentNullException.ThrowIfNull(values);
 
         return ConfiguredIdentitySignatureBuilder.BuildSequenceSignature(
-            values
-                .OrderBy(static value => value.Start)
-                .ThenBy(static value => value.Finish),
+            PolicyConditionCanonicalOrder.OrderAddresses(values),
             static (builder, value) =>
             {
                 builder.Append(value.Start);

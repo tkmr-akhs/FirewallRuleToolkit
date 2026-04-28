@@ -82,7 +82,7 @@ internal static class ApplicationConditionSetOperations
         ArgumentNullException.ThrowIfNull(values);
 
         return ConfiguredIdentitySignatureBuilder.BuildSequenceSignature(
-            values.OrderBy(static value => value, StringComparer.Ordinal),
+            PolicyConditionCanonicalOrder.OrderApplications(values),
             static (builder, value) => ConfiguredIdentitySignatureBuilder.AppendString(builder, value));
     }
 }

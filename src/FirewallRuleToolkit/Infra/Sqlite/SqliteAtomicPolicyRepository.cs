@@ -18,7 +18,57 @@ public sealed class SqliteAtomicPolicyRepository : SqliteReadWriteRepositoryBase
     private const string GroupIdColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.GroupIdColumn;
     private const string OriginalIndexColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.OriginalIndexColumn;
     private const string OriginalPolicyNameColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.OriginalPolicyNameColumn;
+    private const string AddressStartJsonPath = SqliteDatabaseLayout.AtomicSecurityPolicies.AddressStartJsonPath;
+    private const string AddressFinishJsonPath = SqliteDatabaseLayout.AtomicSecurityPolicies.AddressFinishJsonPath;
+    private const string ServiceProtocolStartJsonPath = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceProtocolStartJsonPath;
+    private const string ServiceProtocolFinishJsonPath = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceProtocolFinishJsonPath;
+    private const string ServiceSourcePortStartJsonPath = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceSourcePortStartJsonPath;
+    private const string ServiceSourcePortFinishJsonPath = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceSourcePortFinishJsonPath;
+    private const string ServiceDestinationPortStartJsonPath = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceDestinationPortStartJsonPath;
+    private const string ServiceDestinationPortFinishJsonPath = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceDestinationPortFinishJsonPath;
     private const string ServiceKindJsonPath = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceKindJsonPath;
+    private const string SourceAddressStartExpression = "json_extract(" + SourceAddressJsonColumn + ", '" + AddressStartJsonPath + "')";
+    private const string SourceAddressFinishExpression = "json_extract(" + SourceAddressJsonColumn + ", '" + AddressFinishJsonPath + "')";
+    private const string DestinationAddressStartExpression = "json_extract(" + DestinationAddressJsonColumn + ", '" + AddressStartJsonPath + "')";
+    private const string DestinationAddressFinishExpression = "json_extract(" + DestinationAddressJsonColumn + ", '" + AddressFinishJsonPath + "')";
+    private const string ServiceProtocolStartExpression = "json_extract(" + ServiceJsonColumn + ", '" + ServiceProtocolStartJsonPath + "')";
+    private const string ServiceProtocolFinishExpression = "json_extract(" + ServiceJsonColumn + ", '" + ServiceProtocolFinishJsonPath + "')";
+    private const string ServiceSourcePortStartExpression = "json_extract(" + ServiceJsonColumn + ", '" + ServiceSourcePortStartJsonPath + "')";
+    private const string ServiceSourcePortFinishExpression = "json_extract(" + ServiceJsonColumn + ", '" + ServiceSourcePortFinishJsonPath + "')";
+    private const string ServiceDestinationPortStartExpression = "json_extract(" + ServiceJsonColumn + ", '" + ServiceDestinationPortStartJsonPath + "')";
+    private const string ServiceDestinationPortFinishExpression = "json_extract(" + ServiceJsonColumn + ", '" + ServiceDestinationPortFinishJsonPath + "')";
+    private const string ServiceKindExpression = "json_extract(" + ServiceJsonColumn + ", '" + ServiceKindJsonPath + "')";
+    private const string ServiceCategoryOrderExpression =
+        "CASE " +
+        "WHEN " + ServiceKindExpression + " IS NULL " +
+        "AND " + ServiceProtocolStartExpression + " = 0 " +
+        "AND " + ServiceProtocolFinishExpression + " = 255 " +
+        "AND " + ServiceSourcePortStartExpression + " = 0 " +
+        "AND " + ServiceSourcePortFinishExpression + " = 65535 " +
+        "AND " + ServiceDestinationPortStartExpression + " = 0 " +
+        "AND " + ServiceDestinationPortFinishExpression + " = 65535 THEN 0 " +
+        "WHEN " + ServiceKindExpression + " IS NOT NULL AND trim(" + ServiceKindExpression + ") <> '' THEN 1 " +
+        "ELSE 2 END";
+    private const string DestinationAddressOrderColumns =
+        DestinationAddressStartExpression + ", " +
+        DestinationAddressFinishExpression;
+    private const string SourceAddressOrderColumns =
+        SourceAddressStartExpression + ", " +
+        SourceAddressFinishExpression;
+    private const string ServiceOrderColumns =
+        ServiceCategoryOrderExpression + ", " +
+        ServiceKindExpression + ", " +
+        ServiceProtocolStartExpression + ", " +
+        ServiceProtocolFinishExpression + ", " +
+        ServiceDestinationPortStartExpression + ", " +
+        ServiceDestinationPortFinishExpression + ", " +
+        ServiceSourcePortStartExpression + ", " +
+        ServiceSourcePortFinishExpression;
+    private const string CanonicalConditionOrderColumns =
+        DestinationAddressOrderColumns + ", " +
+        ServiceOrderColumns + ", " +
+        ApplicationColumn + ", " +
+        SourceAddressOrderColumns;
 
     private const string InitializeCommandText =
         "DROP TABLE IF EXISTS " + TableName + ";" +
@@ -50,7 +100,13 @@ public sealed class SqliteAtomicPolicyRepository : SqliteReadWriteRepositoryBase
     private const string SelectAllCommandText =
         "SELECT " + SelectColumns +
         " FROM " + TableName +
-        " ORDER BY " + OriginalIndexColumn + ", rowid;";
+        " ORDER BY " +
+        OriginalIndexColumn + ", " +
+        FromZoneColumn + ", " +
+        ToZoneColumn + ", " +
+        ActionColumn + ", " +
+        CanonicalConditionOrderColumns + ", " +
+        "rowid;";
 
     private const string SelectAllOrderedForMergeCommandText =
         "SELECT " + SelectColumns +
@@ -58,8 +114,11 @@ public sealed class SqliteAtomicPolicyRepository : SqliteReadWriteRepositoryBase
         " ORDER BY " +
         FromZoneColumn + ", " +
         ToZoneColumn + ", " +
-        "json_extract(" + ServiceJsonColumn + ", '" + ServiceKindJsonPath + "'), " +
-        OriginalIndexColumn + ", rowid;";
+        ServiceKindExpression + ", " +
+        OriginalIndexColumn + ", " +
+        CanonicalConditionOrderColumns + ", " +
+        ActionColumn + ", " +
+        "rowid;";
 
     private const string InsertCommandText =
         "INSERT INTO " + TableName + "(" + SelectColumns + ") " +
@@ -120,7 +179,7 @@ public sealed class SqliteAtomicPolicyRepository : SqliteReadWriteRepositoryBase
     /// <summary>
     /// merge 処理に適した順序で原子的なセキュリティ ポリシーを取得します。
     /// </summary>
-    /// <returns>`FromZone`、`ToZone`、`Service.Kind`、`OriginalIndex`、保存順の順に整列された原子的なセキュリティ ポリシー列。</returns>
+    /// <returns>`FromZone`、`ToZone`、`Service.Kind`、`OriginalIndex`、標準条件順、保存順の順に整列された原子的なセキュリティ ポリシー列。</returns>
     public IEnumerable<AtomicSecurityPolicy> GetAllOrderedForMerge()
     {
         using var connection = SqliteRepositoryHelper.OpenConnection(DatabasePath);

@@ -89,8 +89,8 @@ internal sealed class SecurityPolicyTestRunner
     /// shadowed 分類は merge と同じパーティション前提で行うため、入力列は同一 merge パーティションが連続する順序である必要があります。
     /// このメソッドは入力列を並び替えず、順序契約違反も検出しません。
     /// </remarks>
-    /// <param name="atomicPoliciesOrderedForMerge">`FromZone`、`ToZone`、`Service.Kind`、`OriginalIndex` の順で並び、同じ merge パーティションが連続するよう整列された Atomic ポリシー列。</param>
-    /// <param name="mergedPolicies">検査対象の merged ポリシー列。</param>
+    /// <param name="atomicPoliciesOrderedForMerge">merge 用順序で並び、同じ merge パーティションが連続するよう整列された Atomic ポリシー列。</param>
+    /// <param name="mergedPolicies">first-hit 検証順で並んだ merged ポリシー列。</param>
     /// <param name="reportFinding">不一致報告先。</param>
     /// <param name="onAtomicPolicyProcessed">Atomic ポリシー 1 件の処理完了通知先。</param>
     /// <returns>検査結果の要約。</returns>
@@ -105,13 +105,7 @@ internal sealed class SecurityPolicyTestRunner
 
         reportFinding ??= static _ => { };
 
-        var mergedPoliciesOrdered = mergedPolicies
-            .OrderBy(static policy => policy.MinimumIndex)
-            .ThenBy(static policy => policy.MaximumIndex)
-            .ToArray();
-        var classificationsOrderedByOriginalIndex = ClassifyAtomicPolicies(atomicPoliciesOrderedForMerge)
-            .OrderBy(static classification => classification.Policy.OriginalIndex)
-            .ToArray();
+        var mergedPoliciesOrdered = mergedPolicies.ToArray();
 
         long processedAtomicCount = 0;
         long nonShadowedAtomicCount = 0;
@@ -119,7 +113,7 @@ internal sealed class SecurityPolicyTestRunner
         long warningDiagnosticCount = 0;
         long informationalDiagnosticCount = 0;
 
-        foreach (var classification in classificationsOrderedByOriginalIndex)
+        foreach (var classification in ClassifyAtomicPolicies(atomicPoliciesOrderedForMerge))
         {
             processedAtomicCount++;
             onAtomicPolicyProcessed?.Invoke(processedAtomicCount);
@@ -173,12 +167,11 @@ internal sealed class SecurityPolicyTestRunner
     /// <summary>
     /// Atomic 列を shadowed / 非 shadowed に分類します。
     /// </summary>
-    /// <param name="atomicPoliciesOrderedForMerge">`FromZone`、`ToZone`、`Service.Kind`、`OriginalIndex` の順で並び、同じ merge パーティションが連続するよう整列された Atomic ポリシー列。</param>
+    /// <param name="atomicPoliciesOrderedForMerge">merge 用順序で並び、同じ merge パーティションが連続するよう整列された Atomic ポリシー列。</param>
     /// <returns>分類結果。</returns>
     private static IEnumerable<AtomicPolicyClassification> ClassifyAtomicPolicies(
         IEnumerable<AtomicSecurityPolicy> atomicPoliciesOrderedForMerge)
     {
-        var classifications = new List<AtomicPolicyClassification>();
         var partitionAtomicPolicies = new List<AtomicSecurityPolicy>();
         var partitionCandidates = new List<AtomicMergeCandidate>();
         MergePartitionKey? currentPartition = null;
@@ -192,10 +185,15 @@ internal sealed class SecurityPolicyTestRunner
             }
             else if (!currentPartition.Value.Equals(nextPartition))
             {
-                AppendPartitionClassifications(
-                    classifications,
+                foreach (var classification in ClassifyPartition(
                     partitionAtomicPolicies,
-                    partitionCandidates);
+                    partitionCandidates))
+                {
+                    yield return classification;
+                }
+
+                partitionAtomicPolicies.Clear();
+                partitionCandidates.Clear();
                 currentPartition = nextPartition;
             }
 
@@ -203,32 +201,30 @@ internal sealed class SecurityPolicyTestRunner
             partitionCandidates.Add(AtomicMergeCandidateFactory.CreateFromAtomic(atomicPolicy));
         }
 
-        AppendPartitionClassifications(
-            classifications,
+        foreach (var classification in ClassifyPartition(
             partitionAtomicPolicies,
-            partitionCandidates);
-
-        return classifications;
+            partitionCandidates))
+        {
+            yield return classification;
+        }
     }
 
     /// <summary>
-    /// パーティション単位の shadow 分析結果を分類一覧へ追加します。
+    /// パーティション単位の shadow 分析結果を分類列へ変換します。
     /// </summary>
-    /// <param name="destination">追加先。</param>
     /// <param name="partitionAtomicPolicies">対象パーティションの Atomic 列。</param>
     /// <param name="partitionCandidates">shadow 判定用の Atomic マージ候補列。</param>
-    private static void AppendPartitionClassifications(
-        List<AtomicPolicyClassification> destination,
+    /// <returns>分類結果。</returns>
+    private static IEnumerable<AtomicPolicyClassification> ClassifyPartition(
         List<AtomicSecurityPolicy> partitionAtomicPolicies,
         List<AtomicMergeCandidate> partitionCandidates)
     {
-        ArgumentNullException.ThrowIfNull(destination);
         ArgumentNullException.ThrowIfNull(partitionAtomicPolicies);
         ArgumentNullException.ThrowIfNull(partitionCandidates);
 
         if (partitionAtomicPolicies.Count == 0)
         {
-            return;
+            yield break;
         }
 
         var analysis = SecurityPolicyShadowAnalyzer.Analyze(partitionCandidates);
@@ -240,11 +236,8 @@ internal sealed class SecurityPolicyTestRunner
 
         for (var index = 0; index < partitionAtomicPolicies.Count; index++)
         {
-            destination.Add(new AtomicPolicyClassification(partitionAtomicPolicies[index], shadowedFlags[index]));
+            yield return new AtomicPolicyClassification(partitionAtomicPolicies[index], shadowedFlags[index]);
         }
-
-        partitionAtomicPolicies.Clear();
-        partitionCandidates.Clear();
     }
 
     /// <summary>

@@ -35,6 +35,13 @@ MergedRepo --> UseCase : void
 UseCase -> AtomicRepo : GetAllOrderedForMerge()
 AtomicRepo --> UseCase : atomic policies in merge order
 
+note over AtomicRepo
+  SQLite ORDER BY provides rule row order:
+  FromZone / ToZone / Service.Kind / OriginalIndex /
+  DestinationAddress / Service / Application / SourceAddress / Action / rowid.
+  Domain runners consume this order and do not sort the full rule stream.
+end note
+
 UseCase -> Runner : Run(\natomicPoliciesOrderedForMerge,\nemitMergedPolicies,\nonAtomicPolicyProcessed)
 activate Runner
 

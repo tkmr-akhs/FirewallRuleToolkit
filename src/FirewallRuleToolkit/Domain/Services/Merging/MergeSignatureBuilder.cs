@@ -47,7 +47,7 @@ internal static class MergeSignatureBuilder
         ArgumentNullException.ThrowIfNull(values);
 
         return ConfiguredIdentitySignatureBuilder.BuildSequenceSignature(
-            values.OrderBy(static value => value, StringComparer.Ordinal),
+            PolicyConditionCanonicalOrder.OrderOrdinalStrings(values),
             static (builder, value) => ConfiguredIdentitySignatureBuilder.AppendString(builder, value));
     }
 

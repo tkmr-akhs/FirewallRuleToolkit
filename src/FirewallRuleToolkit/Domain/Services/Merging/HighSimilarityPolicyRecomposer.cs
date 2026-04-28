@@ -468,7 +468,7 @@ internal sealed class HighSimilarityPolicyRecomposer
     /// <returns>ログ向け文字列。</returns>
     private static string FormatStringValues(IEnumerable<string> values)
     {
-        return string.Join(",", values.OrderBy(static value => value, StringComparer.Ordinal));
+        return string.Join(",", PolicyConditionCanonicalOrder.OrderOrdinalStrings(values));
     }
 
     /// <summary>

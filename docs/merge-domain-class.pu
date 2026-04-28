@@ -98,6 +98,14 @@ package "Domain.Services.PolicyConditions" {
     +SubtractByConfiguredIdentity(...) : HashSet<string>
     +CreateConfiguredIdentitySignature(...) : string
   }
+
+  class PolicyConditionCanonicalOrder <<static>> {
+    +OrderAddresses(...) : IOrderedEnumerable<AddressValue>
+    +OrderServices(...) : IOrderedEnumerable<ServiceValue>
+    +OrderApplications(...) : IOrderedEnumerable<string>
+    +OrderOrdinalStrings(...) : IOrderedEnumerable<string>
+    +IsBuiltInAnyService(...) : bool
+  }
 }
 
 package "Domain.Services.Merging" {
@@ -428,9 +436,14 @@ MergeSignatureBuilder ..> AddressConditionSetOperations
 MergeSignatureBuilder ..> ServiceConditionSetOperations
 MergeSignatureBuilder ..> ApplicationConditionSetOperations
 AddressConditionSetOperations ..> AddressValue
+AddressConditionSetOperations ..> PolicyConditionCanonicalOrder
 ServiceConditionSetOperations ..> ServiceValue
+ServiceConditionSetOperations ..> PolicyConditionCanonicalOrder
+ApplicationConditionSetOperations ..> PolicyConditionCanonicalOrder
 EffectivePolicyConditionContainment ..> AddressValue
 EffectivePolicyConditionContainment ..> ServiceValue
+PolicyConditionCanonicalOrder ..> AddressValue
+PolicyConditionCanonicalOrder ..> ServiceValue
 
 ImportedSecurityPolicy ..> SecurityPolicyAction
 ResolvedSecurityPolicy ..> ResolvedAddress

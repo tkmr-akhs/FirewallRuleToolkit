@@ -82,27 +82,20 @@ internal static class ServiceConditionSetOperations
         ArgumentNullException.ThrowIfNull(values);
 
         return ConfiguredIdentitySignatureBuilder.BuildSequenceSignature(
-            values
-                .OrderBy(static value => value.ProtocolStart)
-                .ThenBy(static value => value.ProtocolFinish)
-                .ThenBy(static value => value.SourcePortStart)
-                .ThenBy(static value => value.SourcePortFinish)
-                .ThenBy(static value => value.DestinationPortStart)
-                .ThenBy(static value => value.DestinationPortFinish)
-                .ThenBy(static value => value.Kind, StringComparer.Ordinal),
+            PolicyConditionCanonicalOrder.OrderServices(values),
             static (builder, value) =>
             {
                 builder.Append(value.ProtocolStart);
                 builder.Append('-');
                 builder.Append(value.ProtocolFinish);
                 builder.Append('/');
-                builder.Append(value.SourcePortStart);
-                builder.Append('-');
-                builder.Append(value.SourcePortFinish);
-                builder.Append('/');
                 builder.Append(value.DestinationPortStart);
                 builder.Append('-');
                 builder.Append(value.DestinationPortFinish);
+                builder.Append('/');
+                builder.Append(value.SourcePortStart);
+                builder.Append('-');
+                builder.Append(value.SourcePortFinish);
                 builder.Append('/');
                 ConfiguredIdentitySignatureBuilder.AppendString(builder, value.Kind);
             });

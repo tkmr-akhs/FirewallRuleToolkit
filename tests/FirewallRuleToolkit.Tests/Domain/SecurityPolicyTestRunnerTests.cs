@@ -200,7 +200,7 @@ public sealed class SecurityPolicyTestRunnerTests
     }
 
     [Fact]
-    public void Run_WhenMultipleMergedPoliciesContainAtomic_UsesFirstHitAfterMinimumThenMaximumSort()
+    public void Run_WhenMultipleMergedPoliciesContainAtomic_UsesProvidedMergedOrder()
     {
         var runner = new SecurityPolicyTestRunner();
         var findings = new List<SecurityPolicyTestRunner.Finding>();
@@ -219,9 +219,11 @@ public sealed class SecurityPolicyTestRunnerTests
         ],
             findings.Add);
 
-        Assert.Equal(0, result.WarningDiagnosticCount);
+        Assert.Equal(1, result.WarningDiagnosticCount);
         Assert.Equal(0, result.InformationalDiagnosticCount);
-        Assert.Empty(findings);
+        var finding = Assert.Single(findings);
+        Assert.Equal(SecurityPolicyTestRunner.FindingKind.ActionMismatch, finding.Kind);
+        Assert.Equal(SecurityPolicyAction.Deny, finding.MatchedMergedPolicy?.Action);
     }
 
     [Fact]

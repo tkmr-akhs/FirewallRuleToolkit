@@ -83,11 +83,11 @@ public sealed class SqliteMergedSecurityPolicyRepository : SqliteReadWriteReposi
             },
             static (command, policy) =>
             {
-                command.Parameters.AddWithValue("$fromZoneJson", EntityValueCodec.SerializeStringList(policy.FromZones));
+                command.Parameters.AddWithValue("$fromZoneJson", EntityValueCodec.SerializeStringSet(policy.FromZones));
                 command.Parameters.AddWithValue("$sourceAddressesJson", EntityValueCodec.SerializeAddressValues(policy.SourceAddresses));
-                command.Parameters.AddWithValue("$toZoneJson", EntityValueCodec.SerializeStringList(policy.ToZones));
+                command.Parameters.AddWithValue("$toZoneJson", EntityValueCodec.SerializeStringSet(policy.ToZones));
                 command.Parameters.AddWithValue("$destinationAddressesJson", EntityValueCodec.SerializeAddressValues(policy.DestinationAddresses));
-                command.Parameters.AddWithValue("$applicationJson", EntityValueCodec.SerializeStringList(policy.Applications));
+                command.Parameters.AddWithValue("$applicationJson", EntityValueCodec.SerializeStringSet(policy.Applications));
                 command.Parameters.AddWithValue("$servicesJson", EntityValueCodec.SerializeServiceValues(policy.Services));
                 command.Parameters.AddWithValue("$action", EntityValueCodec.FormatAction(policy.Action));
                 command.Parameters.AddWithValue("$groupId", policy.GroupId);
@@ -121,11 +121,11 @@ public sealed class SqliteMergedSecurityPolicyRepository : SqliteReadWriteReposi
             },
             static (command, policy) =>
             {
-                command.Parameters.AddWithValue("$fromZoneJson", EntityValueCodec.SerializeStringList(policy.FromZones));
+                command.Parameters.AddWithValue("$fromZoneJson", EntityValueCodec.SerializeStringSet(policy.FromZones));
                 command.Parameters.AddWithValue("$sourceAddressesJson", EntityValueCodec.SerializeAddressValues(policy.SourceAddresses));
-                command.Parameters.AddWithValue("$toZoneJson", EntityValueCodec.SerializeStringList(policy.ToZones));
+                command.Parameters.AddWithValue("$toZoneJson", EntityValueCodec.SerializeStringSet(policy.ToZones));
                 command.Parameters.AddWithValue("$destinationAddressesJson", EntityValueCodec.SerializeAddressValues(policy.DestinationAddresses));
-                command.Parameters.AddWithValue("$applicationJson", EntityValueCodec.SerializeStringList(policy.Applications));
+                command.Parameters.AddWithValue("$applicationJson", EntityValueCodec.SerializeStringSet(policy.Applications));
                 command.Parameters.AddWithValue("$servicesJson", EntityValueCodec.SerializeServiceValues(policy.Services));
                 command.Parameters.AddWithValue("$action", EntityValueCodec.FormatAction(policy.Action));
                 command.Parameters.AddWithValue("$groupId", policy.GroupId);

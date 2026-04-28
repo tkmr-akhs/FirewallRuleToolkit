@@ -116,17 +116,17 @@ public sealed class CsvMergedSecurityPolicyWriter : IWriteRepository<MergedSecur
     private IList<string> CreateRecord(MergedSecurityPolicy policy)
     {
         return [
-            JoinSorted(policy.FromZones),
+            JoinStrings(policy.FromZones),
             FormatAddresses(policy.SourceAddresses, sourceAddressCompactor),
-            JoinSorted(policy.ToZones),
+            JoinStrings(policy.ToZones),
             FormatAddresses(policy.DestinationAddresses, destinationAddressCompactor),
-            JoinSorted(policy.Applications),
-            JoinSorted(policy.Services, FormatServiceValue),
+            JoinApplications(policy.Applications),
+            JoinServices(policy.Services),
             EntityValueCodec.FormatAction(policy.Action),
             policy.GroupId,
             policy.MinimumIndex.ToString(),
             policy.MaximumIndex.ToString(),
-            JoinSorted(policy.OriginalPolicyNames)
+            JoinStrings(policy.OriginalPolicyNames)
         ];
     }
 
@@ -136,7 +136,7 @@ public sealed class CsvMergedSecurityPolicyWriter : IWriteRepository<MergedSecur
     {
         if (compactor is null)
         {
-            return JoinSorted(addresses, FormatAddressValue);
+            return JoinAddresses(addresses);
         }
 
         var compacted = compactor.Compact(addresses);
@@ -145,20 +145,33 @@ public sealed class CsvMergedSecurityPolicyWriter : IWriteRepository<MergedSecur
             compacted.GroupNames
                 .OrderBy(static value => value, StringComparer.Ordinal)
                 .Concat(compacted.RemainingAddresses
-                    .Select(FormatAddressValue)
-                    .OrderBy(static value => value, StringComparer.Ordinal)));
+                    .OrderBy(static value => value.Start)
+                    .ThenBy(static value => value.Finish)
+                    .Select(FormatAddressValue)));
     }
 
-    private static string JoinSorted(IEnumerable<string> values)
+    private static string JoinStrings(IEnumerable<string> values)
     {
-        return string.Join(", ", values.OrderBy(value => value, StringComparer.Ordinal));
+        return string.Join(", ", PolicyConditionCanonicalOrder.OrderOrdinalStrings(values));
     }
 
-    private static string JoinSorted<T>(IEnumerable<T> values, Func<T, string> formatter)
+    private static string JoinApplications(IEnumerable<string> values)
     {
-        return string.Join(", ", values
-            .Select(formatter)
-            .OrderBy(value => value, StringComparer.Ordinal));
+        return string.Join(", ", PolicyConditionCanonicalOrder.OrderApplications(values));
+    }
+
+    private static string JoinAddresses(IEnumerable<AddressValue> values)
+    {
+        return string.Join(", ", PolicyConditionCanonicalOrder
+            .OrderAddresses(values)
+            .Select(FormatAddressValue));
+    }
+
+    private static string JoinServices(IEnumerable<ServiceValue> values)
+    {
+        return string.Join(", ", PolicyConditionCanonicalOrder
+            .OrderServices(values)
+            .Select(FormatServiceValue));
     }
 
     private static string FormatAddressValue(AddressValue value)
@@ -226,22 +239,12 @@ public sealed class CsvMergedSecurityPolicyWriter : IWriteRepository<MergedSecur
             return value.Kind;
         }
 
-        if (IsAnyServiceValue(value))
+        if (PolicyConditionCanonicalOrder.IsBuiltInAnyService(value))
         {
             return "any";
         }
 
         return $"{FormatProtocol(value.ProtocolStart, value.ProtocolFinish)} {FormatPortRange(value.SourcePortStart, value.SourcePortFinish)} {FormatPortRange(value.DestinationPortStart, value.DestinationPortFinish)}";
-    }
-
-    private static bool IsAnyServiceValue(ServiceValue value)
-    {
-        return value.ProtocolStart == 0U
-            && value.ProtocolFinish == 255U
-            && value.SourcePortStart == 0U
-            && value.SourcePortFinish == 65535U
-            && value.DestinationPortStart == 0U
-            && value.DestinationPortFinish == 65535U;
     }
 
     private static string FormatProtocol(uint start, uint finish)

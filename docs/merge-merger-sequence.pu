@@ -23,6 +23,13 @@ note over ServiceMerger, OriginalRuleMerger
   traceability absorption are provided by the SignatureBasedMergerBase base class
 end note
 
+note over ConfiguredIdentity
+  Signatures use PolicyConditionCanonicalOrder:
+  address Start / Finish,
+  service any -> Kind -> protocol / destination / source,
+  application Ordinal.
+end note
+
 RunnerFlush -> ShadowAnalyzer : Analyze(partitionCandidates)
 activate ShadowAnalyzer
 loop compare non-shadowed candidate and later candidate
