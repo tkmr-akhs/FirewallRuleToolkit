@@ -50,7 +50,7 @@ public sealed class SqliteMergedSecurityPolicyRepository : SqliteReadWriteReposi
     private const string SelectAllCommandText =
         "SELECT " + SelectColumns +
         " FROM " + TableName +
-        " ORDER BY " + MinimumIndexColumn + ", rowid;";
+        " ORDER BY " + MinimumIndexColumn + ", " + MaximumIndexColumn + ", rowid;";
 
     private const string InsertCommandText =
         "INSERT INTO " + TableName + "(" + SelectColumns + ") " +

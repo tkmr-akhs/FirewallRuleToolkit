@@ -19,11 +19,6 @@
   - セット由来の値が出力される場合、差分レビューでノイズになる可能性がある。
   - 方針案: Domain の canonical order と exporter の表示順を定義する。
 
-- [ ] [bug] `merged` の読み出し順と first-hit 検証順を揃える。
-  - `SecurityPolicyTestRunner` は `MinimumIndex`、`MaximumIndex` の順で first-hit を選ぶ一方、`SqliteMergedSecurityPolicyRepository.GetAll()` は `MinimumIndex`、`rowid` の順で返す。
-  - 同じ `MinimumIndex` を持つ merged が複数ある場合、`test` の判定順と export CSV の表示・適用順がずれる可能性がある。
-  - 方針案: merged policy の canonical order を Domain 側で定義し、repository / exporter / test で共有する。
-
 ## 中優先度
 
 - [ ] [spec] 高一致率再編成の集合演算モデルを整理する。
@@ -45,12 +40,13 @@
 
 - [ ] [bug] `SecurityPolicyAction` と flag enum が未定義値を受け入れる。
   - `SecurityPolicyAction` は任意の整数で生成でき、未定義 action が merge / export に流入できる。
+  - `Enum.Parse` はカンマ区切りの複合名も受け入れるため、`Allow, Deny` が数値 `3` になり、現行値では `Drop` と区別できなくなる。
   - `ExportTarget` / `LogType` などの `[Flags]` enum も未定義ビットを受け取ると、何もしない成功や意図しない出力になり得る。
   - 設定 JSON の enum deserialization も整数値を受け取れるため、CLI option と設定ファイルの両方で検証が必要。
   - 方針案: CLI parse 境界または App 層で enum validation を共通化する。
 
 - [ ] [spec] CSV 入力スキーマと parser error context を整理する。
-  - duplicate header がある場合、どちらの列が採用されるか不明確。
+  - duplicate header がある場合、現行のヘッダー辞書は後勝ちで上書きするため、どちらの列を採用すべきかを明示できていない。
   - Palo Alto CSV の空ヘッダー index 列を前提にしており、列ずれ時の診断が弱い。
   - quote の開始/終了判定が `CsvRecordReader` と `CsvRecordParser` に分かれており、不正 quote でレコード境界とエラー行番号がずれる可能性がある。
   - malformed quote / record length mismatch などの CSV 破損時に、行番号と列名を含むエラーへ寄せたい。
@@ -162,6 +158,11 @@
   - 「partition」という名前だけだと、業務上の整理単位、shadow 判定範囲、統合可否条件が同じ概念に見えやすい。
   - 方針案: `MergeStreamPartitionKey` / `MergeEligibilitySignature` などへ分け、処理フェーズごとの境界を明文化する。
 
+- [ ] [spec] 非 Allow ルールの束ね単位と merge partition の関係を整理する。
+  - 仕様や README では「同じ元ルール由来の非 Allow を束ねる」と読める一方、実装では `SecurityPolicyMergeRunner` が `FromZone` / `ToZone` / `Service.Kind` ごとに partition を flush し、その内側で `OriginalRuleMerger` を実行する。
+  - そのため、同一元ルールでも複数ゾーンや `Service.Kind` 差分を持つ `Deny` / `Drop` / `ResetBoth` は複数の merged に分かれ、`OriginalRuleMerger` という名前より狭い処理になる。
+  - 方針案: 非 Allow は partition 内でだけ束ねる仕様として明記するか、non-Allow 専用の再集約フェーズを partition 後に設ける。
+
 - [ ] [ref] policy condition collection の不変条件を Domain 型で表現する。
   - `ImportedSecurityPolicy` / `ResolvedSecurityPolicy` / `MergedSecurityPolicy` が zone / address / application / service の集合を生の list / set として持つため、空集合、空白値、重複、順序依存の扱いが各処理へ散っている。
   - 方針案: `PolicyConditionSet` や `NonEmptyConditionSet<T>` のような型を導入し、空禁止、正規化、canonical order、比較規約を集約する。
@@ -177,7 +178,7 @@
   - 方針案: Domain event / diagnostic sink / App 側 observer などへ寄せる。
 
 - [ ] [ref] SQLite schema lifecycle を明示する。
-  - `EnsureSchema()` が repository ごとに呼ばれ、schema 変更や migration の責務が分散している。
+  - repository ごとに schema 作成 SQL、`Initialize()`、`EnsureTableAvailable()` が分散しており、schema 変更や migration の責務が散っている。
   - 方針案: DB 初期化 service または migration service に寄せる。
 
 - [ ] [ref] Domain value object の不変条件を強める。
@@ -280,10 +281,11 @@
 - Domain runner の責務整理は対応済み。logger 依存の整理は、batch orchestration の所在ではなく診断出力の層依存を扱う。
 - metadata の課題は現行コードでは `IToolMetadataRepository` に限定する。旧称の `IImportMetadataRepository` / `IAppMetadataRepository` は現存しないため TODO から外した。
 - `merged export のアドレスグループ再利用任意化` と `AddressGroupCompactor の候補生成整理` は近いが重複ではない。前者は export の利用者向け出力方針、後者は compaction algorithm と候補入力の整合性を扱う。
-- `merged export の service object / service group 名復元方針` は、`Palo Alto の Service 列モデル分離` と近いが重複ではない。前者は出力時の表示・復元方針、後者は入力表現と解決後条件の境界を扱う。
+- `merged export の service object / service group 名復元方針` は対応しない決定済み。`Palo Alto の Service 列モデル分離` は、入力表現と解決後条件の境界整理として別に残す。
 - `AddressGroupCompactor` の group 名衝突問題は、`import 入力検証` の object / group 名衝突検出で最終的に解消できる可能性がある。ただし現行コードでは compactor 固有の誤解決として表面化するため、compaction 側の候補生成整理にも残す。
 - 外部公開境界の整理は、層依存や `GlobalUsings` の話と近いが重複ではない。前者は API surface / 互換性 / ドキュメント対象、後者は参照しやすさと namespace 可視性を扱う。
 - action label parsing と codec 分離は、未定義 enum 値検証とは重複しない。前者は正規化・永続化形式の責務境界、後者は値域検証を扱う。
+- 非 Allow の束ね単位と partition の関係整理は、`merge partition と merge eligibility signature` に近いが重複ではない。前者は出力仕様と `OriginalRuleMerger` の名前が示す範囲、後者は runner の flush 境界と各 merger の統合可否条件を扱う。
 - `merged の traceability を exact source set で保持する` は現行結論のままでよい。将来 action range overlap の誤検知削減が必要になった場合は、traceability ではなく overlap 判定精度の課題として切り出す。
 
 ## 対応を見送る事項 (無期ペンディング)
@@ -353,6 +355,13 @@
 ## 対応済み事項
 
 ### 高優先度だったもの
+
+- [x] [bug] `merged` の読み出し順と first-hit 検証順を揃える。
+  - `SecurityPolicyTestRunner` は `MinimumIndex`、`MaximumIndex` の順で first-hit を選ぶ一方、`SqliteMergedSecurityPolicyRepository.GetAll()` は `MinimumIndex`、`rowid` の順で返していた。
+  - 対応内容: SQLite の merged 読み出し順を `MinimumIndex`、`MaximumIndex`、`rowid` に揃え、SQL 側でソートするようにした。
+  - 対応内容: `SqliteMergedSecurityPolicyRepository` の順序をテストで固定した。
+  - 対応内容: merged の標準順を `product-spec.md` に明記した。
+  - 議論概要: 大量データではアプリ側で再ソートせず SQL に任せたい。例示した action 逆転ケースは実データ上は論理的に起こらないが、`test` と `export` の順序契約がずれている状態は不自然なため、読み出し順を first-hit 検証順へ揃えることにした。
 
 - [x] [ux] merged service export のプロトコル範囲表記を整理する。
   - `CsvMergedSecurityPolicyWriter` はプロトコル範囲の両端をプロトコル名へ変換するため、`1-17` が `icmp-udp` のような表記になり得る。

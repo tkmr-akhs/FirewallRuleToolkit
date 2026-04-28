@@ -406,6 +406,7 @@ application は統合対象の差分軸に含めません。異なる applicatio
 
 `merged_security_policies` を再生成します。既存内容は毎回作り直します。
 再生成は SQLite トランザクション内で行い、途中で中断した場合は未確定の merged 結果をロールバックします。
+merged の読み出しおよび出力に使う標準順は、`MinimumIndex` の昇順、同値時は `MaximumIndex` の昇順、さらに同値時は保存順とします。
 
 ### 7.4. `export`
 
@@ -434,6 +435,7 @@ application は統合対象の差分軸に含めません。異なる applicatio
 - merged CSV のサービス参照 `any` 相当 (`0-255 0-65535 0-65535`) は `any` と出力する
 - merged CSV の 3 軸指定サービスは `tcp any 80-90` のような可読形式で出力する。プロトコル名は単一プロトコルの場合だけ使い、`1-17` のようなプロトコル範囲は範囲端点を名前化せず数値範囲で出力する。各軸がすべて `any` 相当の場合は `any any any` と出力し、サービス参照 `any` とは区別する
 - import 済みのアドレス グループ情報が利用可能な場合、merged 出力では既存グループ名へ圧縮して再利用する
+- merged 出力は、`MinimumIndex` の昇順、同値時は `MaximumIndex` の昇順、さらに同値時は保存順で行う
 
 #### 7.4.5. 出力ヘッダー
 
@@ -489,7 +491,7 @@ Merged 出力ヘッダー:
 - atomic は `OriginalIndex` の昇順で走査する
 - atomic は第 2 キーを規定しない
 - merged は `MinimumIndex` の昇順、同値時は `MaximumIndex` の昇順で走査する
-- `MinimumIndex` と `MaximumIndex` の両方が同値である merged 同士の最終順は規定しない
+- `MinimumIndex` と `MaximumIndex` の両方が同値である merged 同士は、比較対象列の順序を保つ。SQLite から読み取る場合は保存順を使う
 
 #### 7.5.5. 含有判定
 
