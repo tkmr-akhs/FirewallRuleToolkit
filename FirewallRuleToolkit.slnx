@@ -1,5 +1,9 @@
 ﻿<Solution>
   <Folder Name="/src/">
+    <Project Path="src/FirewallRuleToolkit.App/FirewallRuleToolkit.App.csproj" />
+    <Project Path="src/FirewallRuleToolkit.Composition/FirewallRuleToolkit.Composition.csproj" />
+    <Project Path="src/FirewallRuleToolkit.Domain/FirewallRuleToolkit.Domain.csproj" />
+    <Project Path="src/FirewallRuleToolkit.Infra/FirewallRuleToolkit.Infra.csproj" />
     <Project Path="src/FirewallRuleToolkit/FirewallRuleToolkit.csproj" />
   </Folder>
   <Folder Name="/tests/">

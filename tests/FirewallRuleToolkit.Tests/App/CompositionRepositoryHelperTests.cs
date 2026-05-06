@@ -1,4 +1,4 @@
-﻿using FirewallRuleToolkit.App.Composition;
+﻿using FirewallRuleToolkit.Composition;
 using FirewallRuleToolkit.Domain.Ports;
 using FirewallRuleToolkit.Domain.Exceptions;
 

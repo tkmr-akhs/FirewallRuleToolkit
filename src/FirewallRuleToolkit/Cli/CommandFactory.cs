@@ -1,7 +1,7 @@
 ﻿using System.CommandLine;
 using System.CommandLine.Parsing;
 using System.Text.Json;
-using FirewallRuleToolkit.App.Composition;
+using FirewallRuleToolkit.Composition;
 using FirewallRuleToolkit.Cli.OptionResolvers;
 using FirewallRuleToolkit.Config;
 

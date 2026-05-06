@@ -217,10 +217,6 @@
   - `EntityValueCodec.Deserialize*` や public init 経由で、`Start > Finish`、protocol / port の範囲外、`Kind` の null / 空文字 / 空白差分などが入ると、containment、canonical order、export formatting の前提が崩れやすい。
   - 方針案: factory / parse result / validation error を整理する。
 
-- [ ] [ref] Composition root と App 層の Infra 依存を再点検する。
-  - CLI 層で repository 実装を組み立てるのはよいが、App 層が Infra 型へ寄る箇所がないか確認する。
-  - 方針案: App は ports と Domain service のみを見る形に寄せる。
-
 - [ ] [ref] UseCase の戻り値と前提チェックを CLI 境界から切り離す。
   - `ImportUseCase` / `MergeUseCase` などが `int` の終了コードを返しており、UseCase が CLI 実行形態を知っている。
   - Composition と UseCase の双方で `EnsureAvailable()` を呼ぶ箇所があり、前提チェック、例外変換、repository 生成の責務が散っている。
@@ -403,6 +399,16 @@
 ## 対応済み事項
 
 ### 高優先度だったもの
+
+- [x] [ref] Composition root と App 層の Infra 依存を再点検する。
+  - `App.Composition` は `Sqlite*Repository` / `PaloAlto*CsvReader` など具象 Infra を組み立てており、App 層に置くと App が Infra 実装へコンパイル依存する。
+  - 一方で CLI の `CommandFactory` へ直接混ぜると、引数解析と依存構築の責務が絡みやすい。
+  - 対応内容: `App.Composition` を `FirewallRuleToolkit.Composition` 名前空間へ一段上げ、外側の composition root として扱う形にした。
+  - 対応内容: `FirewallRuleToolkit.Domain` / `FirewallRuleToolkit.App` / `FirewallRuleToolkit.Infra` / `FirewallRuleToolkit.Composition` を別 `.csproj` へ分割し、現プロジェクトは CLI と entry point を持つ実行プロジェクトとして残した。
+  - 対応内容: 現プロジェクトは `App` と `Composition` のみを直接参照し、`Domain` / `Infra` の直接参照を削除した。`DisableTransitiveProjectReferences` も有効化し、推移参照に頼らない形にした。
+  - 対応内容: `Composition` が App / Domain / Infra を参照して具象依存を組み立て、App は Domain ports / services のみを見る依存方向へ整理した。
+  - 対応内容: `GlobalUsings` をプロジェクトごとに見直し、Tests 以外の `InternalsVisibleTo` を排除した。
+  - 補足: CLI は切り出さず、現プロジェクトに残す方針とした。
 
 - [x] [ux] import 後の条件集合とポリシー条件の canonical order を定義する。
   - セット由来の値が保存、比較、出力、診断へ流れる場合、差分レビューやログ確認でノイズになる可能性がある。

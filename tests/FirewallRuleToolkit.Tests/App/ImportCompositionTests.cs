@@ -1,6 +1,6 @@
 ﻿using System.Text;
 using FirewallRuleToolkit.App;
-using FirewallRuleToolkit.App.Composition;
+using FirewallRuleToolkit.Composition;
 using FirewallRuleToolkit.Domain.Exceptions;
 
 namespace FirewallRuleToolkit.Tests.App;

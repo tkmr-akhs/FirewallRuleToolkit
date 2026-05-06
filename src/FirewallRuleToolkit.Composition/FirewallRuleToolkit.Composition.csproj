@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FirewallRuleToolkit.App\FirewallRuleToolkit.App.csproj" />
+    <ProjectReference Include="..\FirewallRuleToolkit.Domain\FirewallRuleToolkit.Domain.csproj" />
+    <ProjectReference Include="..\FirewallRuleToolkit.Infra\FirewallRuleToolkit.Infra.csproj" />
+  </ItemGroup>
+
+</Project>

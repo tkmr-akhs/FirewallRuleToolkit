@@ -19,6 +19,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\FirewallRuleToolkit.App\FirewallRuleToolkit.App.csproj" />
+    <ProjectReference Include="..\..\src\FirewallRuleToolkit.Composition\FirewallRuleToolkit.Composition.csproj" />
+    <ProjectReference Include="..\..\src\FirewallRuleToolkit.Domain\FirewallRuleToolkit.Domain.csproj" />
+    <ProjectReference Include="..\..\src\FirewallRuleToolkit.Infra\FirewallRuleToolkit.Infra.csproj" />
     <ProjectReference Include="..\..\src\FirewallRuleToolkit\FirewallRuleToolkit.csproj" />
   </ItemGroup>
 
