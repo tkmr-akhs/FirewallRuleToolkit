@@ -1,4 +1,4 @@
-﻿{
+{
   "version": "2.0.0",
   "tasks": [
     {
@@ -23,22 +23,6 @@
         "clean",
         "${workspaceFolder}/FirewallRuleToolkit.slnx"
       ]
-    },
-    {
-      "label": "run",
-      "type": "process",
-      "command": "dotnet",
-      "args": [
-        "run",
-        "--project",
-        "${workspaceFolder}/src/FirewallRuleToolkit",
-        "--",
-        "${workspaceFolder}/samples/input.csv",
-        "${workspaceFolder}/samples/output.csv",
-        "${workspaceFolder}/work.db"
-      ],
-      "dependsOn": "build",
-      "problemMatcher": []
     },
     {
       "label": "test",
