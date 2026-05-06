@@ -46,6 +46,11 @@
   - 設定 JSON の enum deserialization も整数値を受け取れるため、CLI option と設定ファイルの両方で検証が必要。
   - 方針案: CLI parse 境界または App 層で enum validation を共通化する。
 
+- [ ] [spec] `SecurityPolicyAction` の対応範囲と Palo Alto action label を整理する。
+  - Domain の action は `Allow` / `Deny` / `Drop` / `ResetBoth` だけで、README の「`Reset` など」と実際の対応値が一致しているか読み取りづらい。
+  - `EntityValueCodec.ParseAction` は日本語 `両方のリセット` と enum 名を扱うが、Palo Alto 側で reset-client / reset-server などを出す場合に、未対応として拒否するのか `ResetBoth` とは別 action として保持するのかが未整理。
+  - 方針案: Domain が意味論として扱う action 種別と、Palo Alto CSV adapter が受け付ける表示ラベルを一覧化し、未対応 action は import validation で supported values 付きのエラーにする。
+
 - [ ] [spec] CSV 入力スキーマと parser error context を整理する。
   - duplicate header がある場合、現行のヘッダー辞書は後勝ちで上書きするため、どちらの列を採用すべきかを明示できていない。
   - Palo Alto CSV の空ヘッダー index 列を前提にしており、列ずれ時の診断が弱い。
@@ -69,6 +74,17 @@
   - 参照リストは trim される一方、定義名やポリシー名は raw 値を保持する箇所があり、前後空白で lookup がずれる可能性がある。
   - サービス定義の空 source / destination port は現状 `any` に補完されるため、protocol ごとに許容する空値とエラーにする空値を分けたい。
   - 方針案: import validation report を導入し、repository 保存前に検証する。
+
+- [ ] [spec] CIDR 入力のホスト部を丸めるか拒否するかを明確にする。
+  - `AddressValueParser.ParseCidr` は `192.168.1.10/24` のような host bit 付き CIDR を `192.168.1.0/24` 相当へ丸める。
+  - `PaloAltoAddressDefinitionCsvReader` は CIDR 文字列を import 時に正規化しないため、実際の丸めは atomize 時に起き、入力ミスなのか意図したネットワーク表記なのか診断できない。
+  - 方針案: 製品 CSV として許容するなら仕様へ明記し、拒否するなら import validation で元値を示してエラーにする。
+
+- [ ] [spec] shadow / 重複除去で、単体包含と先行ルール集合による被覆を分けて整理する。
+  - `SecurityPolicyShadowAnalyzer` と `AtomicMergeCandidateDeduplicator` は、1 つの先行候補または 1 つの候補が対象を完全包含する場合だけ shadow / contained とみなす。
+  - threshold により CIDR / IP range / port range が範囲のまま残る場合、複数の先行ルールを合わせると後続ルールを全域被覆しているが、単体では包含しないケースが残り得る。
+  - 現行仕様として「1 ルールによる完全包含だけを shadow と呼ぶ」のか、先行ルール集合による到達不能性まで扱うのかを明確にしたい。
+  - 方針案: 到達不能性まで扱う場合は、アドレス / サービス / アプリケーションの集合被覆判定を Domain の範囲演算として切り出す。
 
 - [ ] [ux] shadowed rules report を出す。
   - merge / test の過程で検出した shadowed rule をユーザーが確認できる形にする。
@@ -114,6 +130,11 @@
   - 複数の group 経由で同じ address / service が展開されると、同等 atomic rule が増える。
   - 方針案: resolved value set と display name set を分け、値集合は重複排除する。
 
+- [ ] [ux] merged export のサービス集合を可読な範囲へ圧縮するか整理する。
+  - `ServiceMerger` は `ServiceValue` の集合を union するが、隣接・重複する protocol / port range を coalesce しない。
+  - `CsvMergedSecurityPolicyWriter` は集合要素を個別に `tcp any 80, tcp any 81` のように出力するため、atomize threshold や複数 service object の由来によって人間向け CSV が細かくなりやすい。
+  - 方針案: merge / test の意味論で使う configured identity は保持しつつ、export formatting 専用に連続 port / protocol range の表示圧縮を行うか決める。
+
 - [ ] [ux] merged export のアドレスグループ再利用を任意化する。
   - 既存 address group 名を再利用すると、元設定と同名で中身の違う group を出力する可能性がある。
   - 現在は merged export 用 writer の生成時に `AddressGroupCompactor` を必ず作るため、merged table があっても import 済み address group と atomize threshold metadata がないと export できない。
@@ -135,6 +156,11 @@
   - `any` service は `Kind = null`、`application-default` などは `Kind` 指定として扱われます。
   - containment や merge partition が `Kind` を厳密に見るため、期待する「any がすべてを含む」動きとずれる可能性があります。
 
+- [ ] [spec] service 参照の組み込み `any` を atomize threshold で分解するか整理する。
+  - `ServiceValueParser` は service 参照そのものの `any` を `0-255 0-65535 0-65535` として表現し、`ResolvedServiceExpander` はこの数値範囲にも通常どおり threshold を適用する。
+  - `threshold` を大きくすると組み込み `any` が多数の数値サービスへ分解され、merged export で `any` として戻らず、protocol `255` の扱いも表面化する可能性がある。
+  - 方針案: 組み込み `any` を数値範囲ではなく専用条件として扱って分解対象外にするか、分解を許容するなら export coalesce と仕様を明記する。
+
 - [ ] [ref] Palo Alto の Service 列と解決後サービス条件のモデルを分ける。
   - Palo Alto の Service 列には `any`、`application-default`、サービス object 名、サービス group 名、直接指定サービスが入る。
   - 一方、atomize / merge が必要とするのは、プロトコル番号・送信元ポート・宛先ポートへ展開できるサービス条件である。
@@ -152,6 +178,11 @@
   - `Sequence` に依存する処理と、集合として扱える処理の境界が曖昧。
   - `SecurityPolicyMergeRunner` / `SecurityPolicyTestRunner` は `IAtomicPolicyMergeSource.GetAllOrderedForMerge()` 相当の順序を前提にするが、型としては `IEnumerable<AtomicSecurityPolicy>` であり、順序違反を検出しない。
   - 方針案: order-sensitive な rule set と unordered な rule set を型または service 境界で分ける。
+
+- [ ] [ref] repository 読み出し順の契約を用途別 Port として表現する。
+  - `IReadRepository<T>.GetAll()` は一般的な列挙に見える一方、atomic export、merged export、test の first-hit 検証、imported policy の処理順などで、実装ごとの標準順に依存している。
+  - `IAtomicPolicyMergeSource.GetAllOrderedForMerge()` だけは用途名があるが、merged の first-hit 順や export 標準順は `GetAll()` に埋もれており、将来の repository 実装で順序契約を破っても型から読み取れない。
+  - 方針案: `IMergedPolicyFirstHitSource`、`IAtomicPolicyExportSource` などの read model 別 Port、または順序付き result 型へ分ける。
 
 - [ ] [ref] merge partition と merge eligibility signature の概念を分ける。
   - `MergePartitionKey` は runner が入力を flush するための連続性キーだが、実際に統合可能かどうかは各 merger の signature (`Action` / `GroupId` / `Application` などを含む) で決まる。
@@ -183,6 +214,7 @@
 
 - [ ] [ref] Domain value object の不変条件を強める。
   - `AddressValue` / `ServiceValue` / `ServiceDefinition` などで、生成後に無効状態を持てないようにする。
+  - `EntityValueCodec.Deserialize*` や public init 経由で、`Start > Finish`、protocol / port の範囲外、`Kind` の null / 空文字 / 空白差分などが入ると、containment、canonical order、export formatting の前提が崩れやすい。
   - 方針案: factory / parse result / validation error を整理する。
 
 - [ ] [ref] Composition root と App 層の Infra 依存を再点検する。
@@ -238,6 +270,7 @@
 - [ ] [ref] action label parsing と永続化 codec の責務を分ける。
   - `EntityValueCodec.ParseAction` が Palo Alto の日本語 action ラベルと永続化済み enum 名の両方を扱っている。
   - 同じ codec が Palo Alto import、SQLite 復元、Atomic CSV 復元で使われるため、vendor adapter の入力正規化と内部永続化形式の境界が曖昧。
+  - `EntityValueCodec.FormatAction` も SQLite / Atomic CSV / merged CSV 出力で共用されるため、内部 enum 名、Palo Alto 表示名、人間向け出力名のどれを出すべきかが出力先ごとに分かれていない。
   - `EntityValueCodec` という名前も、action label、policy index、JSON 省略キー serialization をまとめており責務範囲が広い。
   - 方針案: Palo Alto action label mapper、Domain action canonical codec、JSON value serializer を分ける。
 
@@ -266,6 +299,11 @@
   - service 参照そのものの `any` は `0-255`、名前付きサービス定義や直指定の `any` は `0-254` に寄るため、`255` の意味が入口によって変わる。
   - 方針案: `Kind` 指定を数値サービス条件とは別 union case として持つか、IP protocol `255` の扱いを仕様として明示する。
 
+- [ ] [spec] サービス入力 port `0` の正規化範囲を明確にする。
+  - `PaloAltoServiceDefinitionCsvReader.NormalizePortItem` と `ServiceValueParser.NormalizePortRangeItem` は、`0` や `0-0` を `1` に丸める。
+  - 製品仕様では `0-xxxx` 範囲を `1-xxxx` へ補正すると読めるが、単独の `0` を有効値、入力ミス、または `any` 相当の別表現のどれとして扱うかは明確でない。
+  - 方針案: Palo Alto CSV 由来の補正と Domain 直指定サービスの検証を分け、単独 `0` を許容する場合もログまたは仕様で明示する。
+
 - [ ] [ref] テスト名・コメントに残った旧称と文字化けを掃除する。
   - App 層は `UseCase` 命名へ寄っているが、テスト ファイル名に `*CommandActionTests.cs` / `*CommandActionProgressTests.cs` が残っている。
   - `PrecomputedAddressGroupCompactorTests.cs` も現行クラス名 `AddressGroupCompactorTests` とずれている。
@@ -285,14 +323,24 @@
 - `AddressGroupCompactor` の group 名衝突問題は、`import 入力検証` の object / group 名衝突検出で最終的に解消できる可能性がある。ただし現行コードでは compactor 固有の誤解決として表面化するため、compaction 側の候補生成整理にも残す。
 - 外部公開境界の整理は、層依存や `GlobalUsings` の話と近いが重複ではない。前者は API surface / 互換性 / ドキュメント対象、後者は参照しやすさと namespace 可視性を扱う。
 - action label parsing と codec 分離は、未定義 enum 値検証とは重複しない。前者は正規化・永続化形式の責務境界、後者は値域検証を扱う。
+- `SecurityPolicyAction` の対応範囲整理と action label parsing / codec 分離は近いが、重複ではない。前者は Domain の action 語彙と実機 action の対応可否、後者は変換処理の責務境界を扱う。
 - 非 Allow の束ね単位と partition の関係整理は、`merge partition と merge eligibility signature` に近いが重複ではない。前者は出力仕様と `OriginalRuleMerger` の名前が示す範囲、後者は runner の flush 境界と各 merger の統合可否条件を扱う。
+- `merge / test runner の入力順序契約を Domain で検証する`、`merge / test の順序契約を Domain 側で表現する`、`repository 読み出し順の契約を用途別 Port として表現する` は近いが、前者は実行時ガード、次は Domain 型設計、最後は export も含む repository Port surface の整理を扱う。
+- `shadow / 重複除去で、単体包含と先行ルール集合による被覆を分けて整理する` は、高一致率再編成の集合演算モデルに近いが重複ではない。前者は到達不能性や冗長候補除去、後者は Allow 候補の再編成ヒューリスティックを扱う。
+- service 組み込み `any` の threshold 分解は、`service any / Kind` と `service protocol 255` に近いが重複ではない。前者は包含意味、後者は sentinel と実データ用途を扱い、ここでは atomize 展開モデルと export で `any` に戻るかを扱う。
+- `サービス入力 port 0 の正規化範囲` と `wkport = 0` は近いが重複ではない。前者はサービス条件の入力解釈、後者は well-known port 制御オプションの値検証を扱う。
+- `import / atomize で条件軸が空になりうる`、`import 入力検証`、`policy condition collection の不変条件` は近いが、前者は実務上の欠落バグ、次は入力境界の診断、最後は Domain 型の表現力を扱う。
+- `CIDR 入力のホスト部` は、`import 入力検証` と `Domain value object の不変条件` の間にあるが、丸めを仕様にするか拒否するかの判断が必要なため別 TODO として残す。
+- `merged export のサービス集合を可読な範囲へ圧縮するか整理する` は、service object / group 名復元をしない決定とは重複しない。前者は数値化済みサービス条件の表示圧縮、後者は元 object 名へ戻すかどうかを扱う。
+- `SQLite 利用可否チェックの副作用`、`SQLite schema lifecycle`、`CSV repository の EnsureAvailable 契約` は近いが、可用性確認の副作用、DB migration / schema 所有、CSV ファイル入出力の contract という別の境界を扱う。
 - `merged の traceability を exact source set で保持する` は現行結論のままでよい。将来 action range overlap の誤検知削減が必要になった場合は、traceability ではなく overlap 判定精度の課題として切り出す。
 
 ## 対応を見送る事項 (無期ペンディング)
 
 - [ ] [req] Palo Alto ルール条件の未取込列を扱う。
-  - `Source User` / `HIP Profiles` / `Url Category` が import 時に読み捨てられている。
-  - いずれかに非空値が入ると、元ルールより広い条件として export されるおそれがある。
+  - `送信元 ユーザー` / `送信元 デバイス` / `宛先 デバイス` / `プロファイル` / `オプション` / `タグ` / `タイプ` など、サンプル CSV 上にも存在する列が import 時に読み捨てられている。
+  - 他バージョンや英語 CSV での `HIP Profiles` / `Url Category` なども同じ未対応条件に含めて扱う。
+  - 条件、状態、または監査上意味を持つ列に非空値が入ると、元ルールより広い条件や不正確なレビュー情報として export されるおそれがある。
   - 方針案: まずは Domain にフィールドを追加して保持するか、未対応条件として import を拒否する。
   - 理由: Palo Alto 特有の機能により複雑化するのはこのツールの目標から外れる。他製品でもできる基本的なルールに関しての整理を目指している。
 
@@ -381,7 +429,7 @@
   - containment は `SecurityPolicyContainment`、差分/和集合は `HighSimilarityPolicyRecomposer`、CIDR 判定や表示用変換は exporter 側に分散している。
   - 対応内容: ルール評価上の包含を `EffectivePolicyConditionContainment` として `Domain.Services.PolicyConditions` へ移し、shadow / test / Allow 候補包含除去が `AddressCovers` / `ServiceCovers` / `ApplicationCovers` を使う形にした。
   - 対応内容: merge / 高一致率再編成で使う設定値としての集合操作を `AddressConditionSetOperations` / `ServiceConditionSetOperations` / `ApplicationConditionSetOperations` に集約し、`UnionByConfiguredIdentity` / `IntersectByConfiguredIdentity` / `SubtractByConfiguredIdentity` / `CreateConfiguredIdentitySignature` として意図を明示した。
-  - 補足: CSV export の CIDR 化や service 可読表記は presentation formatting として Infra 側に残す。表示順の安定化や merged service export 表記の改善は既存の `[ux]` TODO として継続する。
+  - 補足: CSV export の CIDR 化や service 可読表記は presentation formatting として Infra 側に残す。merged export のサービス集合可読圧縮は別 TODO として扱う。
 
 - [x] [ref] Domain runner と UseCase の責務境界を整理する。
   - `SecurityPolicyAtomizeRunner` / `SecurityPolicyMergeRunner` / `SecurityPolicyTestRunner` が進捗間隔、スキップ扱い、repository 追記 callback、実行件数集計を持っており、Domain service がバッチ実行手順まで知っている。
@@ -394,7 +442,7 @@
   - `SecurityPolicyAtomizer`、`SecurityPolicyMerger`、各 repository / exporter に類似の normalize / distinct / sort が分散している。
   - 方針案: Domain value object の正規化、不変条件、表示順を分けて責務を明確にする。
   - 対応内容: CSV 取り込み正規化、Domain 値解釈、Domain collection の不変条件、merge signature / comparison の安定化、export formatting の責務を仕様として分類した。
-  - 補足: 集合演算 API の集約、Palo Alto Service 列モデル分離、service `any` と `Kind` の包含関係、merged service export 表記整理は別 TODO として継続する。
+  - 補足: 集合演算 API の集約、Palo Alto Service 列モデル分離、service `any` と `Kind` の包含関係、merged export のサービス集合可読圧縮は別 TODO として継続する。
 
 - [x] [spec] 予約語 `any` とユーザー定義名の優先順位・大文字小文字規約を整理する。
   - address / service resolver は小文字 `any` を名前付き object / group より先に組み込み値として扱うため、同名 object / group は参照できない。
@@ -402,7 +450,7 @@
   - 対応内容: 「名前が混在しうる箇所は case-sensitive、値だけの軸は必要に応じて内部処理用に正規化する」旨、仕様として明記した。
   - 補足: address object の値に `any` は存在しない前提とし、service 定義 protocol の `ANY` は許可しない。
 
-- [x] [spec] application 値を正規化する。
+- [x] [spec] application 値の正規化方針を整理する。
   - application の `any` / 大文字小文字差分を Domain value object として正規化するか決める。
   - 対応内容: 「application 値は製品・環境ごとの識別子として入力表記を保持し、正規化しない。」旨、仕様として明記した。
   - 補足: `any` の特別扱いは containment 判定など必要な箇所に限定し、保存値や表示値は勝手に書き換えない。
