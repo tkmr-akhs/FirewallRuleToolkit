@@ -15,10 +15,16 @@
 
 ## 高優先度
 
-- [ ] [spec] merge / test runner の入力順序契約を Domain で検証する。
-  - SQLite repository の `ORDER BY` が大量データのソート責務を持つ一方、Domain runner は処理に必要な順序契約が破られると shadow 判定や first-hit 検証が静かにずれる可能性がある。
-  - 方針案: Domain では再ソートせず、atomic の merge partition 連続性、同一 partition 内の `OriginalIndex` 昇順、merged の `MinimumIndex` / `MaximumIndex` 昇順など、整理処理の正しさに必要な最小契約だけを O(n) で検証する。
-  - 方針案: 宛先アドレス、サービス、アプリケーション、送信元アドレスの canonical tie-breaker 完全一致までは Domain で検証せず、表示安定化・差分安定化の責務として SQL / serializer 側に残す。
+- [ ] [spec] CIDR 入力のホスト部を丸めるか拒否するかを明確にする。
+  - `AddressValueParser.ParseCidr` は `192.168.1.10/24` のような host bit 付き CIDR を `192.168.1.0/24` 相当へ丸める。
+  - `PaloAltoAddressDefinitionCsvReader` は CIDR 文字列を import 時に正規化しないため、実際の丸めは atomize 時に起き、入力ミスなのか意図したネットワーク表記なのか診断できない。
+  - 方針案: 製品 CSV として許容するなら仕様へ明記し、拒否するなら import validation で元値を示してエラーにする。
+
+- [ ] [spec] shadow / 重複除去で、単体包含と先行ルール集合による被覆を分けて整理する。
+  - `SecurityPolicyShadowAnalyzer` と `AtomicMergeCandidateDeduplicator` は、1 つの先行候補または 1 つの候補が対象を完全包含する場合だけ shadow / contained とみなす。
+  - threshold により CIDR / IP range / port range が範囲のまま残る場合、複数の先行ルールを合わせると後続ルールを全域被覆しているが、単体では包含しないケースが残り得る。
+  - 現行仕様として「1 ルールによる完全包含だけを shadow と呼ぶ」のか、先行ルール集合による到達不能性まで扱うのかを明確にしたい。
+  - 方針案: 到達不能性まで扱う場合は、アドレス / サービス / アプリケーションの集合被覆判定を Domain の範囲演算として切り出す。
 
 ## 中優先度
 
@@ -28,6 +34,11 @@
   - 再編成で作った共通部や残差が、通常の service / source address / destination address 統合でさらにまとめられる形になっても、再評価されない。
   - 同点候補の選択が入力順に依存するため、同じ集合でも前段の出力順で再編成結果が変わる可能性がある。
   - 方針案: address / service / application の差分を Domain の範囲演算として表現し、残差の再評価を明示的なフェーズにする。
+
+- [ ] [spec] merge / test runner の入力順序契約を Domain で検証する。
+  - SQLite repository の `ORDER BY` が大量データのソート責務を持つ一方、Domain runner は処理に必要な順序契約が破られると shadow 判定や first-hit 検証が静かにずれる可能性がある。
+  - 方針案: Domain では再ソートせず、atomic の merge partition 連続性、同一 partition 内の `OriginalIndex` 昇順、merged の `MinimumIndex` / `MaximumIndex` 昇順など、整理処理の正しさに必要な最小契約だけを O(n) で検証する。
+  - 方針案: 宛先アドレス、サービス、アプリケーション、送信元アドレスの canonical tie-breaker 完全一致までは Domain で検証せず、表示安定化・差分安定化の責務として SQL / serializer 側に残す。
 
 - [ ] [req] `test` を merged 側からも検証し、first-hit 照合を修正する。
   - 現在は atomic から見て merged が見つかるかを中心に確認しており、merged に余計な許可が混入した場合を検出しづらい。
@@ -74,17 +85,6 @@
   - 参照リストは trim される一方、定義名やポリシー名は raw 値を保持する箇所があり、前後空白で lookup がずれる可能性がある。
   - サービス定義の空 source / destination port は現状 `any` に補完されるため、protocol ごとに許容する空値とエラーにする空値を分けたい。
   - 方針案: import validation report を導入し、repository 保存前に検証する。
-
-- [ ] [spec] CIDR 入力のホスト部を丸めるか拒否するかを明確にする。
-  - `AddressValueParser.ParseCidr` は `192.168.1.10/24` のような host bit 付き CIDR を `192.168.1.0/24` 相当へ丸める。
-  - `PaloAltoAddressDefinitionCsvReader` は CIDR 文字列を import 時に正規化しないため、実際の丸めは atomize 時に起き、入力ミスなのか意図したネットワーク表記なのか診断できない。
-  - 方針案: 製品 CSV として許容するなら仕様へ明記し、拒否するなら import validation で元値を示してエラーにする。
-
-- [ ] [spec] shadow / 重複除去で、単体包含と先行ルール集合による被覆を分けて整理する。
-  - `SecurityPolicyShadowAnalyzer` と `AtomicMergeCandidateDeduplicator` は、1 つの先行候補または 1 つの候補が対象を完全包含する場合だけ shadow / contained とみなす。
-  - threshold により CIDR / IP range / port range が範囲のまま残る場合、複数の先行ルールを合わせると後続ルールを全域被覆しているが、単体では包含しないケースが残り得る。
-  - 現行仕様として「1 ルールによる完全包含だけを shadow と呼ぶ」のか、先行ルール集合による到達不能性まで扱うのかを明確にしたい。
-  - 方針案: 到達不能性まで扱う場合は、アドレス / サービス / アプリケーションの集合被覆判定を Domain の範囲演算として切り出す。
 
 - [ ] [ux] shadowed rules report を出す。
   - merge / test の過程で検出した shadowed rule をユーザーが確認できる形にする。
