@@ -9,89 +9,137 @@ public sealed class SqliteAtomicPolicyRepository : SqliteReadWriteRepositoryBase
 {
     private const string TableName = SqliteDatabaseLayout.AtomicSecurityPolicies.TableName;
     private const string FromZoneColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.FromZoneColumn;
-    private const string SourceAddressJsonColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.SourceAddressJsonColumn;
+    private const string SourceAddressStartColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.SourceAddressStartColumn;
+    private const string SourceAddressFinishColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.SourceAddressFinishColumn;
     private const string ToZoneColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.ToZoneColumn;
-    private const string DestinationAddressJsonColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.DestinationAddressJsonColumn;
+    private const string DestinationAddressStartColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.DestinationAddressStartColumn;
+    private const string DestinationAddressFinishColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.DestinationAddressFinishColumn;
     private const string ApplicationColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.ApplicationColumn;
-    private const string ServiceJsonColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceJsonColumn;
+    private const string ServiceCategoryOrderColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceCategoryOrderColumn;
+    private const string ServiceKindColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceKindColumn;
+    private const string ServiceProtocolStartColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceProtocolStartColumn;
+    private const string ServiceProtocolFinishColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceProtocolFinishColumn;
+    private const string ServiceSourcePortStartColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceSourcePortStartColumn;
+    private const string ServiceSourcePortFinishColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceSourcePortFinishColumn;
+    private const string ServiceDestinationPortStartColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceDestinationPortStartColumn;
+    private const string ServiceDestinationPortFinishColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceDestinationPortFinishColumn;
     private const string ActionColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.ActionColumn;
     private const string GroupIdColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.GroupIdColumn;
     private const string OriginalIndexColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.OriginalIndexColumn;
     private const string OriginalPolicyNameColumn = SqliteDatabaseLayout.AtomicSecurityPolicies.OriginalPolicyNameColumn;
-    private const string AddressStartJsonPath = SqliteDatabaseLayout.AtomicSecurityPolicies.AddressStartJsonPath;
-    private const string AddressFinishJsonPath = SqliteDatabaseLayout.AtomicSecurityPolicies.AddressFinishJsonPath;
-    private const string ServiceProtocolStartJsonPath = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceProtocolStartJsonPath;
-    private const string ServiceProtocolFinishJsonPath = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceProtocolFinishJsonPath;
-    private const string ServiceSourcePortStartJsonPath = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceSourcePortStartJsonPath;
-    private const string ServiceSourcePortFinishJsonPath = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceSourcePortFinishJsonPath;
-    private const string ServiceDestinationPortStartJsonPath = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceDestinationPortStartJsonPath;
-    private const string ServiceDestinationPortFinishJsonPath = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceDestinationPortFinishJsonPath;
-    private const string ServiceKindJsonPath = SqliteDatabaseLayout.AtomicSecurityPolicies.ServiceKindJsonPath;
-    private const string SourceAddressStartExpression = "json_extract(" + SourceAddressJsonColumn + ", '" + AddressStartJsonPath + "')";
-    private const string SourceAddressFinishExpression = "json_extract(" + SourceAddressJsonColumn + ", '" + AddressFinishJsonPath + "')";
-    private const string DestinationAddressStartExpression = "json_extract(" + DestinationAddressJsonColumn + ", '" + AddressStartJsonPath + "')";
-    private const string DestinationAddressFinishExpression = "json_extract(" + DestinationAddressJsonColumn + ", '" + AddressFinishJsonPath + "')";
-    private const string ServiceProtocolStartExpression = "json_extract(" + ServiceJsonColumn + ", '" + ServiceProtocolStartJsonPath + "')";
-    private const string ServiceProtocolFinishExpression = "json_extract(" + ServiceJsonColumn + ", '" + ServiceProtocolFinishJsonPath + "')";
-    private const string ServiceSourcePortStartExpression = "json_extract(" + ServiceJsonColumn + ", '" + ServiceSourcePortStartJsonPath + "')";
-    private const string ServiceSourcePortFinishExpression = "json_extract(" + ServiceJsonColumn + ", '" + ServiceSourcePortFinishJsonPath + "')";
-    private const string ServiceDestinationPortStartExpression = "json_extract(" + ServiceJsonColumn + ", '" + ServiceDestinationPortStartJsonPath + "')";
-    private const string ServiceDestinationPortFinishExpression = "json_extract(" + ServiceJsonColumn + ", '" + ServiceDestinationPortFinishJsonPath + "')";
-    private const string ServiceKindExpression = "json_extract(" + ServiceJsonColumn + ", '" + ServiceKindJsonPath + "')";
-    private const string ServiceCategoryOrderExpression =
-        "CASE " +
-        "WHEN " + ServiceKindExpression + " IS NULL " +
-        "AND " + ServiceProtocolStartExpression + " = 0 " +
-        "AND " + ServiceProtocolFinishExpression + " = 255 " +
-        "AND " + ServiceSourcePortStartExpression + " = 0 " +
-        "AND " + ServiceSourcePortFinishExpression + " = 65535 " +
-        "AND " + ServiceDestinationPortStartExpression + " = 0 " +
-        "AND " + ServiceDestinationPortFinishExpression + " = 65535 THEN 0 " +
-        "WHEN " + ServiceKindExpression + " IS NOT NULL AND trim(" + ServiceKindExpression + ") <> '' THEN 1 " +
-        "ELSE 2 END";
+    private const string MergeOrderIndexName = SqliteDatabaseLayout.AtomicSecurityPolicies.MergeOrderIndexName;
+    private const string DefaultOrderIndexName = SqliteDatabaseLayout.AtomicSecurityPolicies.DefaultOrderIndexName;
+    private const string UInt32MaximumValueLiteral = "4294967295";
+    private const string ServiceCategoryMaximumValueLiteral = "2";
     private const string DestinationAddressOrderColumns =
-        DestinationAddressStartExpression + ", " +
-        DestinationAddressFinishExpression;
+        DestinationAddressStartColumn + ", " +
+        DestinationAddressFinishColumn;
     private const string SourceAddressOrderColumns =
-        SourceAddressStartExpression + ", " +
-        SourceAddressFinishExpression;
+        SourceAddressStartColumn + ", " +
+        SourceAddressFinishColumn;
     private const string ServiceOrderColumns =
-        ServiceCategoryOrderExpression + ", " +
-        ServiceKindExpression + ", " +
-        ServiceProtocolStartExpression + ", " +
-        ServiceProtocolFinishExpression + ", " +
-        ServiceDestinationPortStartExpression + ", " +
-        ServiceDestinationPortFinishExpression + ", " +
-        ServiceSourcePortStartExpression + ", " +
-        ServiceSourcePortFinishExpression;
+        ServiceCategoryOrderColumn + ", " +
+        ServiceKindColumn + ", " +
+        ServiceProtocolStartColumn + ", " +
+        ServiceProtocolFinishColumn + ", " +
+        ServiceDestinationPortStartColumn + ", " +
+        ServiceDestinationPortFinishColumn + ", " +
+        ServiceSourcePortStartColumn + ", " +
+        ServiceSourcePortFinishColumn;
+    private const string ServiceOrderColumnsForMergeIndex =
+        ServiceCategoryOrderColumn + ", " +
+        ServiceProtocolStartColumn + ", " +
+        ServiceProtocolFinishColumn + ", " +
+        ServiceDestinationPortStartColumn + ", " +
+        ServiceDestinationPortFinishColumn + ", " +
+        ServiceSourcePortStartColumn + ", " +
+        ServiceSourcePortFinishColumn;
     private const string CanonicalConditionOrderColumns =
         DestinationAddressOrderColumns + ", " +
         ServiceOrderColumns + ", " +
         ApplicationColumn + ", " +
         SourceAddressOrderColumns;
+    private const string CanonicalConditionOrderColumnsForMerge =
+        DestinationAddressOrderColumns + ", " +
+        ServiceOrderColumnsForMergeIndex + ", " +
+        ApplicationColumn + ", " +
+        SourceAddressOrderColumns;
+    private const string MergeOrderIndexColumns =
+        FromZoneColumn + ", " +
+        ToZoneColumn + ", " +
+        ServiceKindColumn + ", " +
+        OriginalIndexColumn + ", " +
+        CanonicalConditionOrderColumnsForMerge + ", " +
+        ActionColumn;
+    private const string DefaultOrderIndexColumns =
+        OriginalIndexColumn + ", " +
+        FromZoneColumn + ", " +
+        ToZoneColumn + ", " +
+        ActionColumn + ", " +
+        CanonicalConditionOrderColumns;
 
     private const string InitializeCommandText =
         "DROP TABLE IF EXISTS " + TableName + ";" +
         "CREATE TABLE " + TableName + " (" +
         FromZoneColumn + " TEXT NOT NULL, " +
-        SourceAddressJsonColumn + " TEXT NOT NULL, " +
+        SourceAddressStartColumn + " INTEGER NOT NULL CHECK (" + SourceAddressStartColumn + " >= 0 AND " + SourceAddressStartColumn + " <= " + UInt32MaximumValueLiteral + "), " +
+        SourceAddressFinishColumn + " INTEGER NOT NULL CHECK (" + SourceAddressFinishColumn + " >= 0 AND " + SourceAddressFinishColumn + " <= " + UInt32MaximumValueLiteral + "), " +
         ToZoneColumn + " TEXT NOT NULL, " +
-        DestinationAddressJsonColumn + " TEXT NOT NULL, " +
+        DestinationAddressStartColumn + " INTEGER NOT NULL CHECK (" + DestinationAddressStartColumn + " >= 0 AND " + DestinationAddressStartColumn + " <= " + UInt32MaximumValueLiteral + "), " +
+        DestinationAddressFinishColumn + " INTEGER NOT NULL CHECK (" + DestinationAddressFinishColumn + " >= 0 AND " + DestinationAddressFinishColumn + " <= " + UInt32MaximumValueLiteral + "), " +
         ApplicationColumn + " TEXT NOT NULL, " +
-        ServiceJsonColumn + " TEXT NOT NULL, " +
+        ServiceCategoryOrderColumn + " INTEGER NOT NULL CHECK (" + ServiceCategoryOrderColumn + " >= 0 AND " + ServiceCategoryOrderColumn + " <= " + ServiceCategoryMaximumValueLiteral + "), " +
+        ServiceKindColumn + " TEXT NULL, " +
+        ServiceProtocolStartColumn + " INTEGER NOT NULL CHECK (" + ServiceProtocolStartColumn + " >= 0 AND " + ServiceProtocolStartColumn + " <= " + UInt32MaximumValueLiteral + "), " +
+        ServiceProtocolFinishColumn + " INTEGER NOT NULL CHECK (" + ServiceProtocolFinishColumn + " >= 0 AND " + ServiceProtocolFinishColumn + " <= " + UInt32MaximumValueLiteral + "), " +
+        ServiceSourcePortStartColumn + " INTEGER NOT NULL CHECK (" + ServiceSourcePortStartColumn + " >= 0 AND " + ServiceSourcePortStartColumn + " <= " + UInt32MaximumValueLiteral + "), " +
+        ServiceSourcePortFinishColumn + " INTEGER NOT NULL CHECK (" + ServiceSourcePortFinishColumn + " >= 0 AND " + ServiceSourcePortFinishColumn + " <= " + UInt32MaximumValueLiteral + "), " +
+        ServiceDestinationPortStartColumn + " INTEGER NOT NULL CHECK (" + ServiceDestinationPortStartColumn + " >= 0 AND " + ServiceDestinationPortStartColumn + " <= " + UInt32MaximumValueLiteral + "), " +
+        ServiceDestinationPortFinishColumn + " INTEGER NOT NULL CHECK (" + ServiceDestinationPortFinishColumn + " >= 0 AND " + ServiceDestinationPortFinishColumn + " <= " + UInt32MaximumValueLiteral + "), " +
         ActionColumn + " TEXT NOT NULL, " +
         GroupIdColumn + " TEXT NOT NULL, " +
-        OriginalIndexColumn + " INTEGER NOT NULL CHECK (" + OriginalIndexColumn + " >= 0 AND " + OriginalIndexColumn + " <= 4294967295), " +
+        OriginalIndexColumn + " INTEGER NOT NULL CHECK (" + OriginalIndexColumn + " >= 0 AND " + OriginalIndexColumn + " <= " + UInt32MaximumValueLiteral + "), " +
         OriginalPolicyNameColumn + " TEXT NOT NULL" +
-        ");";
+        ");" +
+        "CREATE INDEX " + MergeOrderIndexName + " ON " + TableName + " (" + MergeOrderIndexColumns + ");" +
+        "CREATE INDEX " + DefaultOrderIndexName + " ON " + TableName + " (" + DefaultOrderIndexColumns + ");";
 
     private const string SelectColumns =
         FromZoneColumn + ", " +
-        SourceAddressJsonColumn + ", " +
+        SourceAddressStartColumn + ", " +
+        SourceAddressFinishColumn + ", " +
         ToZoneColumn + ", " +
-        DestinationAddressJsonColumn + ", " +
+        DestinationAddressStartColumn + ", " +
+        DestinationAddressFinishColumn + ", " +
         ApplicationColumn + ", " +
-        ServiceJsonColumn + ", " +
+        ServiceKindColumn + ", " +
+        ServiceProtocolStartColumn + ", " +
+        ServiceProtocolFinishColumn + ", " +
+        ServiceSourcePortStartColumn + ", " +
+        ServiceSourcePortFinishColumn + ", " +
+        ServiceDestinationPortStartColumn + ", " +
+        ServiceDestinationPortFinishColumn + ", " +
+        ActionColumn + ", " +
+        GroupIdColumn + ", " +
+        OriginalIndexColumn + ", " +
+        OriginalPolicyNameColumn;
+
+    private const string InsertColumns =
+        FromZoneColumn + ", " +
+        SourceAddressStartColumn + ", " +
+        SourceAddressFinishColumn + ", " +
+        ToZoneColumn + ", " +
+        DestinationAddressStartColumn + ", " +
+        DestinationAddressFinishColumn + ", " +
+        ApplicationColumn + ", " +
+        ServiceCategoryOrderColumn + ", " +
+        ServiceKindColumn + ", " +
+        ServiceProtocolStartColumn + ", " +
+        ServiceProtocolFinishColumn + ", " +
+        ServiceSourcePortStartColumn + ", " +
+        ServiceSourcePortFinishColumn + ", " +
+        ServiceDestinationPortStartColumn + ", " +
+        ServiceDestinationPortFinishColumn + ", " +
         ActionColumn + ", " +
         GroupIdColumn + ", " +
         OriginalIndexColumn + ", " +
@@ -114,15 +162,17 @@ public sealed class SqliteAtomicPolicyRepository : SqliteReadWriteRepositoryBase
         " ORDER BY " +
         FromZoneColumn + ", " +
         ToZoneColumn + ", " +
-        ServiceKindExpression + ", " +
+        ServiceKindColumn + ", " +
         OriginalIndexColumn + ", " +
-        CanonicalConditionOrderColumns + ", " +
+        CanonicalConditionOrderColumnsForMerge + ", " +
         ActionColumn + ", " +
         "rowid;";
 
     private const string InsertCommandText =
-        "INSERT INTO " + TableName + "(" + SelectColumns + ") " +
-        "VALUES ($fromZone, $sourceAddressJson, $toZone, $destinationAddressJson, $application, $serviceJson, $action, $groupId, $originalIndex, $originalPolicyName);";
+        "INSERT INTO " + TableName + "(" + InsertColumns + ") " +
+        "VALUES ($fromZone, $sourceAddressStart, $sourceAddressFinish, $toZone, $destinationAddressStart, $destinationAddressFinish, $application, " +
+        "$serviceCategoryOrder, $serviceKind, $serviceProtocolStart, $serviceProtocolFinish, $serviceSourcePortStart, $serviceSourcePortFinish, " +
+        "$serviceDestinationPortStart, $serviceDestinationPortFinish, $action, $groupId, $originalIndex, $originalPolicyName);";
 
     /// <summary>
     /// 原子的なセキュリティ ポリシーを SQLite で読み書きするクラスのコンストラクターです。
@@ -136,19 +186,7 @@ public sealed class SqliteAtomicPolicyRepository : SqliteReadWriteRepositoryBase
             SelectAllCommandText,
             InsertCommandText,
             ReadRecord,
-            static (command, atomicPolicy) =>
-            {
-                command.Parameters.AddWithValue("$fromZone", atomicPolicy.FromZone);
-                command.Parameters.AddWithValue("$sourceAddressJson", EntityValueCodec.SerializeAddressValue(atomicPolicy.SourceAddress));
-                command.Parameters.AddWithValue("$toZone", atomicPolicy.ToZone);
-                command.Parameters.AddWithValue("$destinationAddressJson", EntityValueCodec.SerializeAddressValue(atomicPolicy.DestinationAddress));
-                command.Parameters.AddWithValue("$application", atomicPolicy.Application);
-                command.Parameters.AddWithValue("$serviceJson", EntityValueCodec.SerializeServiceValue(atomicPolicy.Service));
-                command.Parameters.AddWithValue("$action", EntityValueCodec.FormatAction(atomicPolicy.Action));
-                command.Parameters.AddWithValue("$groupId", atomicPolicy.GroupId);
-                command.Parameters.AddWithValue("$originalIndex", EntityValueCodec.FormatPolicyIndex(atomicPolicy.OriginalIndex));
-                command.Parameters.AddWithValue("$originalPolicyName", atomicPolicy.OriginalPolicyName);
-            })
+            BindInsertParameters)
     {
     }
 
@@ -160,19 +198,7 @@ public sealed class SqliteAtomicPolicyRepository : SqliteReadWriteRepositoryBase
             SelectAllCommandText,
             InsertCommandText,
             ReadRecord,
-            static (command, atomicPolicy) =>
-            {
-                command.Parameters.AddWithValue("$fromZone", atomicPolicy.FromZone);
-                command.Parameters.AddWithValue("$sourceAddressJson", EntityValueCodec.SerializeAddressValue(atomicPolicy.SourceAddress));
-                command.Parameters.AddWithValue("$toZone", atomicPolicy.ToZone);
-                command.Parameters.AddWithValue("$destinationAddressJson", EntityValueCodec.SerializeAddressValue(atomicPolicy.DestinationAddress));
-                command.Parameters.AddWithValue("$application", atomicPolicy.Application);
-                command.Parameters.AddWithValue("$serviceJson", EntityValueCodec.SerializeServiceValue(atomicPolicy.Service));
-                command.Parameters.AddWithValue("$action", EntityValueCodec.FormatAction(atomicPolicy.Action));
-                command.Parameters.AddWithValue("$groupId", atomicPolicy.GroupId);
-                command.Parameters.AddWithValue("$originalIndex", EntityValueCodec.FormatPolicyIndex(atomicPolicy.OriginalIndex));
-                command.Parameters.AddWithValue("$originalPolicyName", atomicPolicy.OriginalPolicyName);
-            })
+            BindInsertParameters)
     {
     }
 
@@ -202,20 +228,98 @@ public sealed class SqliteAtomicPolicyRepository : SqliteReadWriteRepositoryBase
             "Atomic policies are unavailable. Run atomize before export/stat.");
     }
 
+    private static void BindInsertParameters(SqliteCommand command, AtomicSecurityPolicy atomicPolicy)
+    {
+        var service = atomicPolicy.Service;
+        command.Parameters.AddWithValue("$fromZone", atomicPolicy.FromZone);
+        command.Parameters.AddWithValue("$sourceAddressStart", FormatUInt32(atomicPolicy.SourceAddress.Start));
+        command.Parameters.AddWithValue("$sourceAddressFinish", FormatUInt32(atomicPolicy.SourceAddress.Finish));
+        command.Parameters.AddWithValue("$toZone", atomicPolicy.ToZone);
+        command.Parameters.AddWithValue("$destinationAddressStart", FormatUInt32(atomicPolicy.DestinationAddress.Start));
+        command.Parameters.AddWithValue("$destinationAddressFinish", FormatUInt32(atomicPolicy.DestinationAddress.Finish));
+        command.Parameters.AddWithValue("$application", atomicPolicy.Application);
+        command.Parameters.AddWithValue("$serviceCategoryOrder", GetServiceCategoryOrder(service));
+        command.Parameters.AddWithValue("$serviceKind", (object?)service.Kind ?? DBNull.Value);
+        command.Parameters.AddWithValue("$serviceProtocolStart", FormatUInt32(service.ProtocolStart));
+        command.Parameters.AddWithValue("$serviceProtocolFinish", FormatUInt32(service.ProtocolFinish));
+        command.Parameters.AddWithValue("$serviceSourcePortStart", FormatUInt32(service.SourcePortStart));
+        command.Parameters.AddWithValue("$serviceSourcePortFinish", FormatUInt32(service.SourcePortFinish));
+        command.Parameters.AddWithValue("$serviceDestinationPortStart", FormatUInt32(service.DestinationPortStart));
+        command.Parameters.AddWithValue("$serviceDestinationPortFinish", FormatUInt32(service.DestinationPortFinish));
+        command.Parameters.AddWithValue("$action", EntityValueCodec.FormatAction(atomicPolicy.Action));
+        command.Parameters.AddWithValue("$groupId", atomicPolicy.GroupId);
+        command.Parameters.AddWithValue("$originalIndex", EntityValueCodec.FormatPolicyIndex(atomicPolicy.OriginalIndex));
+        command.Parameters.AddWithValue("$originalPolicyName", atomicPolicy.OriginalPolicyName);
+    }
+
     private static AtomicSecurityPolicy ReadRecord(SqliteDataReader reader)
     {
         return new AtomicSecurityPolicy
         {
             FromZone = reader.GetString(0),
-            SourceAddress = EntityValueCodec.DeserializeAddressValue(reader.GetString(1)),
-            ToZone = reader.GetString(2),
-            DestinationAddress = EntityValueCodec.DeserializeAddressValue(reader.GetString(3)),
-            Application = reader.GetString(4),
-            Service = EntityValueCodec.DeserializeServiceValue(reader.GetString(5)),
-            Action = EntityValueCodec.ParseAction(reader.GetString(6)),
-            GroupId = reader.GetString(7),
-            OriginalIndex = EntityValueCodec.ReadPolicyIndex(reader.GetInt64(8)),
-            OriginalPolicyName = reader.GetString(9)
+            SourceAddress = new AddressValue
+            {
+                Start = ReadUInt32(reader, 1, SourceAddressStartColumn),
+                Finish = ReadUInt32(reader, 2, SourceAddressFinishColumn)
+            },
+            ToZone = reader.GetString(3),
+            DestinationAddress = new AddressValue
+            {
+                Start = ReadUInt32(reader, 4, DestinationAddressStartColumn),
+                Finish = ReadUInt32(reader, 5, DestinationAddressFinishColumn)
+            },
+            Application = reader.GetString(6),
+            Service = new ServiceValue
+            {
+                Kind = reader.IsDBNull(7) ? null : reader.GetString(7),
+                ProtocolStart = ReadUInt32(reader, 8, ServiceProtocolStartColumn),
+                ProtocolFinish = ReadUInt32(reader, 9, ServiceProtocolFinishColumn),
+                SourcePortStart = ReadUInt32(reader, 10, ServiceSourcePortStartColumn),
+                SourcePortFinish = ReadUInt32(reader, 11, ServiceSourcePortFinishColumn),
+                DestinationPortStart = ReadUInt32(reader, 12, ServiceDestinationPortStartColumn),
+                DestinationPortFinish = ReadUInt32(reader, 13, ServiceDestinationPortFinishColumn)
+            },
+            Action = EntityValueCodec.ParseAction(reader.GetString(14)),
+            GroupId = reader.GetString(15),
+            OriginalIndex = EntityValueCodec.ReadPolicyIndex(reader.GetInt64(16)),
+            OriginalPolicyName = reader.GetString(17)
         };
+    }
+
+    private static long FormatUInt32(uint value)
+    {
+        return value;
+    }
+
+    private static uint ReadUInt32(SqliteDataReader reader, int ordinal, string columnName)
+    {
+        var value = reader.GetInt64(ordinal);
+        if (value < 0 || value > uint.MaxValue)
+        {
+            throw new OverflowException($"{columnName} is out of UInt32 range: {value}");
+        }
+
+        return (uint)value;
+    }
+
+    private static int GetServiceCategoryOrder(ServiceValue service)
+    {
+        if (IsAnyService(service))
+        {
+            return 0;
+        }
+
+        return string.IsNullOrWhiteSpace(service.Kind) ? 2 : 1;
+    }
+
+    private static bool IsAnyService(ServiceValue service)
+    {
+        return service.Kind is null
+            && service.ProtocolStart == 0
+            && service.ProtocolFinish == 255
+            && service.SourcePortStart == 0
+            && service.SourcePortFinish == 65535
+            && service.DestinationPortStart == 0
+            && service.DestinationPortFinish == 65535;
     }
 }

@@ -15,11 +15,6 @@
 
 ## 高優先度
 
-- [ ] [ref] `atomic_security_policies` の並び替え用 JSON 値を scalar column + index 化する。
-  - `SqliteAtomicPolicyRepository.GetAllOrderedForMerge()` は `ORDER BY` で `json_extract` を多用しており、Atomic が大量になると SQLite が JSON 抽出と全件ソートに時間を使い、最初の行が返るまで進捗ログが出ない。
-  - `source_address_start` / `source_address_finish`、`destination_address_start` / `destination_address_finish`、`service_kind`、protocol / source port / destination port の start / finish などを通常列として保存し、merge 用順序に合う index を張る。
-  - 方針案: Atomic テーブルは atomize で再生成される前提とし、insert 時に JSON と scalar column の両方を同一 Domain 値から埋める。変更後は既存 DB に対して atomize / merge の再実行を前提にする。
-
 - [ ] [spec] CIDR 入力のホスト部を丸めるか拒否するかを明確にする。
   - `AddressValueParser.ParseCidr` は `192.168.1.10/24` のような host bit 付き CIDR を `192.168.1.0/24` 相当へ丸める。
   - `PaloAltoAddressDefinitionCsvReader` は CIDR 文字列を import 時に正規化しないため、実際の丸めは atomize 時に起き、入力ミスなのか意図したネットワーク表記なのか診断できない。
@@ -404,6 +399,12 @@
 ## 対応済み事項
 
 ### 高優先度だったもの
+
+- [x] [ref] `atomic_security_policies` の並び替え用 JSON 値を scalar column + index 化する。
+  - `SqliteAtomicPolicyRepository.GetAllOrderedForMerge()` は `ORDER BY` で `json_extract` を多用しており、Atomic が大量になると SQLite が JSON 抽出と全件ソートに時間を使い、最初の行が返るまで進捗ログが出ない。
+  - `source_address_start` / `source_address_finish`、`destination_address_start` / `destination_address_finish`、`service_kind`、protocol / source port / destination port の start / finish などを通常列として保存し、merge 用順序に合う index を張る。
+  - 対応内容: Atomic については JSON 列を廃止し、SQLite の `atomic_security_policies` と atomic CSV の両方を scalar column だけで読み書きするようにした。
+  - 対応内容: SQLite には既定読み出し順と merge 用読み出し順に合わせた index を追加した。変更後は既存 DB に対して atomize / merge の再実行を前提にする。
 
 - [x] [ux] `test` 開始直後の初期処理ログを充実させる。
   - 現在の進捗ログは Atomic 1 件の shadow 分類と照合が終わった後に加算されるため、`test started.` 以降の DB 読み出し、merged 全件読み込み、atomic の merge 用順序読み出し、最初の merge partition 分類中は処理が止まって見える。

@@ -110,6 +110,74 @@ public sealed class SqliteAtomicPolicyRepositoryTests
     }
 
     [Fact]
+    public void ReplaceAll_StoresConditionValuesInScalarColumns()
+    {
+        var databaseDirectory = CreateTempDatabaseDirectory();
+
+        try
+        {
+            var repository = new SqliteAtomicPolicyRepository(databaseDirectory);
+            repository.ReplaceAll(
+            [
+                CreateAtomicPolicy(
+                    10,
+                    "scalar-values",
+                    sourceStart: 100,
+                    destinationStart: 200,
+                    service: new ServiceValue
+                    {
+                        ProtocolStart = 6,
+                        ProtocolFinish = 6,
+                        SourcePortStart = 1024,
+                        SourcePortFinish = 2048,
+                        DestinationPortStart = 443,
+                        DestinationPortFinish = 444,
+                        Kind = "service-a"
+                    })
+            ]);
+
+            using var connection = OpenConnection(repository.DatabasePath);
+            var columnNames = ReadStringColumn(connection, "PRAGMA table_info(atomic_security_policies);", 1);
+            var indexNames = ReadStringColumn(connection, "PRAGMA index_list(atomic_security_policies);", 1);
+
+            Assert.DoesNotContain("source_address_json", columnNames);
+            Assert.DoesNotContain("destination_address_json", columnNames);
+            Assert.DoesNotContain("service_json", columnNames);
+            Assert.Contains("source_address_start", columnNames);
+            Assert.Contains("destination_address_start", columnNames);
+            Assert.Contains("service_protocol_start", columnNames);
+            Assert.Contains("service_kind", columnNames);
+            Assert.Contains("ix_atomic_security_policies_merge_order", indexNames);
+            Assert.Contains("ix_atomic_security_policies_default_order", indexNames);
+
+            using var command = connection.CreateCommand();
+            command.CommandText =
+                "SELECT source_address_start, source_address_finish, destination_address_start, destination_address_finish, " +
+                "service_protocol_start, service_protocol_finish, service_source_port_start, service_source_port_finish, " +
+                "service_destination_port_start, service_destination_port_finish, service_kind FROM atomic_security_policies;";
+
+            using var reader = command.ExecuteReader();
+            Assert.True(reader.Read());
+            Assert.Equal(100L, reader.GetInt64(0));
+            Assert.Equal(100L, reader.GetInt64(1));
+            Assert.Equal(200L, reader.GetInt64(2));
+            Assert.Equal(200L, reader.GetInt64(3));
+            Assert.Equal(6L, reader.GetInt64(4));
+            Assert.Equal(6L, reader.GetInt64(5));
+            Assert.Equal(1024L, reader.GetInt64(6));
+            Assert.Equal(2048L, reader.GetInt64(7));
+            Assert.Equal(443L, reader.GetInt64(8));
+            Assert.Equal(444L, reader.GetInt64(9));
+            Assert.Equal("service-a", reader.GetString(10));
+            Assert.False(reader.Read());
+        }
+        finally
+        {
+            DeleteDatabaseDirectory(databaseDirectory);
+        }
+    }
+
+    [Fact]
     public void GetAll_OrdersByOriginalIndexZonesActionAndCanonicalConditionTieBreakers()
     {
         var databaseDirectory = CreateTempDatabaseDirectory();
@@ -264,6 +332,29 @@ public sealed class SqliteAtomicPolicyRepositoryTests
     private static string CreateTempDatabaseDirectory()
     {
         return Path.Combine(Path.GetTempPath(), $"fwrule-tool-test-{Guid.NewGuid():N}");
+    }
+
+    private static SqliteConnection OpenConnection(string databasePath)
+    {
+        var connectionString = new SqliteConnectionStringBuilder { DataSource = databasePath }.ToString();
+        var connection = new SqliteConnection(connectionString);
+        connection.Open();
+        return connection;
+    }
+
+    private static string[] ReadStringColumn(SqliteConnection connection, string commandText, int ordinal)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = commandText;
+
+        using var reader = command.ExecuteReader();
+        var values = new List<string>();
+        while (reader.Read())
+        {
+            values.Add(reader.GetString(ordinal));
+        }
+
+        return values.ToArray();
     }
 
     private static void DeleteDatabaseDirectory(string databaseDirectory)

@@ -59,24 +59,26 @@ internal static class SqliteDatabaseLayout
     {
         public const string TableName = "atomic_security_policies";
         public const string FromZoneColumn = "from_zone";
-        public const string SourceAddressJsonColumn = "source_address_json";
+        public const string SourceAddressStartColumn = "source_address_start";
+        public const string SourceAddressFinishColumn = "source_address_finish";
         public const string ToZoneColumn = "to_zone";
-        public const string DestinationAddressJsonColumn = "destination_address_json";
+        public const string DestinationAddressStartColumn = "destination_address_start";
+        public const string DestinationAddressFinishColumn = "destination_address_finish";
         public const string ApplicationColumn = "application";
-        public const string ServiceJsonColumn = "service_json";
+        public const string ServiceCategoryOrderColumn = "service_category_order";
+        public const string ServiceKindColumn = "service_kind";
+        public const string ServiceProtocolStartColumn = "service_protocol_start";
+        public const string ServiceProtocolFinishColumn = "service_protocol_finish";
+        public const string ServiceSourcePortStartColumn = "service_source_port_start";
+        public const string ServiceSourcePortFinishColumn = "service_source_port_finish";
+        public const string ServiceDestinationPortStartColumn = "service_destination_port_start";
+        public const string ServiceDestinationPortFinishColumn = "service_destination_port_finish";
         public const string ActionColumn = "action";
         public const string GroupIdColumn = "group_id";
         public const string OriginalIndexColumn = "original_index";
         public const string OriginalPolicyNameColumn = "original_policy_name";
-        public const string AddressStartJsonPath = "$.s";
-        public const string AddressFinishJsonPath = "$.f";
-        public const string ServiceProtocolStartJsonPath = "$.ps";
-        public const string ServiceProtocolFinishJsonPath = "$.pf";
-        public const string ServiceSourcePortStartJsonPath = "$.ss";
-        public const string ServiceSourcePortFinishJsonPath = "$.sf";
-        public const string ServiceDestinationPortStartJsonPath = "$.ds";
-        public const string ServiceDestinationPortFinishJsonPath = "$.df";
-        public const string ServiceKindJsonPath = "$.k";
+        public const string MergeOrderIndexName = "ix_atomic_security_policies_merge_order";
+        public const string DefaultOrderIndexName = "ix_atomic_security_policies_default_order";
     }
 
     public static class MergedSecurityPolicies

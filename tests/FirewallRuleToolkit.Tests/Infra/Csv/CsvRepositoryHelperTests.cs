@@ -31,8 +31,8 @@ public sealed class CsvRepositoryHelperTests
     public void CsvReadWriteRepositoryBaseGetAll_WhenRowConversionFails_ThrowsRepositoryReadExceptionWithRecordContext()
     {
         var path = CreateTempFile(
-            "from_zone,source_address_json,to_zone,destination_address_json,application,service_json,action,group_id,original_index,original_policy_name\r\n" +
-            "trust,not-json,untrust,\"{\"\"s\"\":1,\"\"f\"\":1}\",any,\"{\"\"proto\"\":6,\"\"src\"\":1,\"\"dst\"\":80}\",Allow,group-1,1,rule-1",
+            "from_zone,source_address_start,source_address_finish,to_zone,destination_address_start,destination_address_finish,application,service_protocol_start,service_protocol_finish,service_source_port_start,service_source_port_finish,service_destination_port_start,service_destination_port_finish,service_kind,action,group_id,original_index,original_policy_name\r\n" +
+            "trust,not-number,1,untrust,1,1,any,6,6,0,65535,80,80,,Allow,group-1,1,rule-1",
             new UTF8Encoding(false));
 
         try
@@ -43,7 +43,7 @@ public sealed class CsvRepositoryHelperTests
 
             Assert.Contains(path, exception.Message, StringComparison.Ordinal);
             Assert.Contains("record: 2", exception.Message, StringComparison.Ordinal);
-            Assert.IsAssignableFrom<System.Text.Json.JsonException>(exception.InnerException);
+            Assert.IsType<FormatException>(exception.InnerException);
         }
         finally
         {

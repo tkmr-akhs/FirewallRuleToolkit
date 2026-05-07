@@ -8,11 +8,19 @@ internal static class CsvDatabaseLayout
     public static class AtomicSecurityPolicies
     {
         public const string FromZoneHeader = "from_zone";
-        public const string SourceAddressJsonHeader = "source_address_json";
+        public const string SourceAddressStartHeader = "source_address_start";
+        public const string SourceAddressFinishHeader = "source_address_finish";
         public const string ToZoneHeader = "to_zone";
-        public const string DestinationAddressJsonHeader = "destination_address_json";
+        public const string DestinationAddressStartHeader = "destination_address_start";
+        public const string DestinationAddressFinishHeader = "destination_address_finish";
         public const string ApplicationHeader = "application";
-        public const string ServiceJsonHeader = "service_json";
+        public const string ServiceProtocolStartHeader = "service_protocol_start";
+        public const string ServiceProtocolFinishHeader = "service_protocol_finish";
+        public const string ServiceSourcePortStartHeader = "service_source_port_start";
+        public const string ServiceSourcePortFinishHeader = "service_source_port_finish";
+        public const string ServiceDestinationPortStartHeader = "service_destination_port_start";
+        public const string ServiceDestinationPortFinishHeader = "service_destination_port_finish";
+        public const string ServiceKindHeader = "service_kind";
         public const string ActionHeader = "action";
         public const string GroupIdHeader = "group_id";
         public const string OriginalIndexHeader = "original_index";
@@ -21,11 +29,19 @@ internal static class CsvDatabaseLayout
         public static readonly string[] Headers =
         [
             FromZoneHeader,
-            SourceAddressJsonHeader,
+            SourceAddressStartHeader,
+            SourceAddressFinishHeader,
             ToZoneHeader,
-            DestinationAddressJsonHeader,
+            DestinationAddressStartHeader,
+            DestinationAddressFinishHeader,
             ApplicationHeader,
-            ServiceJsonHeader,
+            ServiceProtocolStartHeader,
+            ServiceProtocolFinishHeader,
+            ServiceSourcePortStartHeader,
+            ServiceSourcePortFinishHeader,
+            ServiceDestinationPortStartHeader,
+            ServiceDestinationPortFinishHeader,
+            ServiceKindHeader,
             ActionHeader,
             GroupIdHeader,
             OriginalIndexHeader,
