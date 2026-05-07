@@ -20,12 +20,6 @@
   - `PaloAltoAddressDefinitionCsvReader` は CIDR 文字列を import 時に正規化しないため、実際の丸めは atomize 時に起き、入力ミスなのか意図したネットワーク表記なのか診断できない。
   - 方針案: 製品 CSV として許容するなら仕様へ明記し、拒否するなら import validation で元値を示してエラーにする。
 
-- [ ] [spec] shadow / 重複除去で、単体包含と先行ルール集合による被覆を分けて整理する。
-  - `SecurityPolicyShadowAnalyzer` と `AtomicMergeCandidateDeduplicator` は、1 つの先行候補または 1 つの候補が対象を完全包含する場合だけ shadow / contained とみなす。
-  - threshold により CIDR / IP range / port range が範囲のまま残る場合、複数の先行ルールを合わせると後続ルールを全域被覆しているが、単体では包含しないケースが残り得る。
-  - 現行仕様として「1 ルールによる完全包含だけを shadow と呼ぶ」のか、先行ルール集合による到達不能性まで扱うのかを明確にしたい。
-  - 方針案: 到達不能性まで扱う場合は、アドレス / サービス / アプリケーションの集合被覆判定を Domain の範囲演算として切り出す。
-
 ## 中優先度
 
 - [ ] [spec] 高一致率再編成の集合演算モデルを整理する。
@@ -399,6 +393,13 @@
 ## 対応済み事項
 
 ### 高優先度だったもの
+
+- [x] [spec] shadow / 重複除去で、単体包含と先行ルール集合による被覆を分けて整理する。
+  - `SecurityPolicyShadowAnalyzer` と `AtomicMergeCandidateDeduplicator` は、1 つの先行候補または 1 つの候補が対象を完全包含する場合だけ shadow / contained とみなす。
+  - threshold により CIDR / IP range / port range が範囲のまま残る場合、複数の先行ルールを合わせると後続ルールを全域被覆しているが、単体では包含しないケースが残り得る。
+  - 結論: 製品仕様上の shadow / contained は、1 件の atomic 候補による単体包含だけを対象とする。先行 atomic 候補集合による到達不能性は、現時点の shadow / 重複除去対象外とする。
+  - 対応内容: `product-spec.md` と `README.md` に、単体包含と先行 atomic 候補集合による被覆の違いを明記した。
+  - 対応内容: `threshold = 3` で、先行ルールの `192.168.0.1,192.168.0.2,192.168.0.3` が 3 件の atomic へ分かれ、後続ルールの `192.168.0.1-192.168.0.3` が範囲のまま残る例を追加した。
 
 - [x] [ref] `atomic_security_policies` の並び替え用 JSON 値を scalar column + index 化する。
   - `SqliteAtomicPolicyRepository.GetAllOrderedForMerge()` は `ORDER BY` で `json_extract` を多用しており、Atomic が大量になると SQLite が JSON 抽出と全件ソートに時間を使い、最初の行が返るまで進捗ログが出ない。
