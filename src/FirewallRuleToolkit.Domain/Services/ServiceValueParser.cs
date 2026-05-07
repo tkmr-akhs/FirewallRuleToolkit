@@ -1,20 +1,10 @@
 ﻿namespace FirewallRuleToolkit.Domain.Services;
 
 /// <summary>
-/// サービス文字列表現と名前付きサービス定義を <see cref="ServiceValue"/> へ変換できる形へ解釈します。
+/// サービス文字列表現と名前付きサービス定義を <see cref="ServiceValue"/> へ変換できる形へ検証・解釈します。
 /// </summary>
 public static class ServiceValueParser
 {
-    /// <summary>
-    /// 全 IP プロトコルを表す範囲表現です。
-    /// </summary>
-    private const string AnyProtocolRange = "0-254";
-
-    /// <summary>
-    /// 全ポートを表す範囲表現です。
-    /// </summary>
-    private const string AnyPortRange = "1-65535";
-
     /// <summary>
     /// サービス参照そのものの any が持つ、Kind 指定も将来包含できるプロトコル範囲表現です。
     /// </summary>
@@ -26,7 +16,7 @@ public static class ServiceValueParser
     private const string AnyServicePortRange = "0-65535";
 
     /// <summary>
-    /// リポジトリで解決できなかったサービス参照を組み込み指定、直指定、または Kind 指定へ変換します。
+    /// リポジトリで解決できなかったサービス参照を組み込み指定、canonical 直指定、または Kind 指定へ分類します。
     /// </summary>
     /// <param name="value">変換対象のサービス参照。</param>
     /// <returns>変換した解決済みサービス定義。</returns>
@@ -38,12 +28,12 @@ public static class ServiceValueParser
             throw new FormatException("Service reference is required.");
         }
 
-        if (TryNormalizeBuiltInValue(trimmed, out var builtInValue))
+        if (TryCreateBuiltInValue(trimmed, out var builtInValue))
         {
             return builtInValue;
         }
 
-        if (TryCreateDirectResolvedService(trimmed, out var directService))
+        if (TryParseCanonicalDirectReference(trimmed, out var directService))
         {
             return directService;
         }
@@ -52,11 +42,11 @@ public static class ServiceValueParser
     }
 
     /// <summary>
-    /// 名前付きサービス定義内の any 表現を後続処理が解釈できる数値範囲へ正規化します。
+    /// 名前付きサービス定義を canonical な解決済みサービス定義として検証・変換します。
     /// </summary>
-    /// <param name="serviceDefinition">正規化対象の名前付きサービス定義。</param>
-    /// <returns>正規化した解決済みサービス定義。</returns>
-    public static ResolvedService NormalizeDefinition(ServiceDefinition serviceDefinition)
+    /// <param name="serviceDefinition">検証対象の名前付きサービス定義。</param>
+    /// <returns>検証済みの解決済みサービス定義。</returns>
+    public static ResolvedService ParseDefinition(ServiceDefinition serviceDefinition)
     {
         ArgumentNullException.ThrowIfNull(serviceDefinition);
 
@@ -71,24 +61,32 @@ public static class ServiceValueParser
             };
         }
 
-        return new ResolvedService
+        if (!string.IsNullOrWhiteSpace(serviceDefinition.Kind))
         {
-            Protocol = NormalizeProtocolValue(serviceDefinition.Protocol),
-            SourcePort = NormalizePortValue(serviceDefinition.SourcePort),
-            DestinationPort = NormalizePortValue(serviceDefinition.DestinationPort),
-            Kind = serviceDefinition.Kind
+            throw new FormatException("Kind service definition must use the Kind sentinel range.");
+        }
+
+        var resolvedService = new ResolvedService
+        {
+            Protocol = TrimRequired(serviceDefinition.Protocol, "Protocol"),
+            SourcePort = TrimRequired(serviceDefinition.SourcePort, "Source port"),
+            DestinationPort = TrimRequired(serviceDefinition.DestinationPort, "Destination port"),
+            Kind = null
         };
+
+        ValidateDirectService(resolvedService);
+        return resolvedService;
     }
 
     /// <summary>
-    /// 組み込みサービス参照を解決済みサービス定義へ正規化します。
+    /// 組み込みサービス参照を解決済みサービス定義として解釈します。
     /// </summary>
     /// <param name="value">変換対象のサービス参照。</param>
-    /// <param name="normalizedValue">正規化した解決済みサービス定義。</param>
+    /// <param name="resolvedValue">解釈した解決済みサービス定義。</param>
     /// <returns>組み込みサービス参照として解釈できた場合は <see langword="true"/>。</returns>
-    public static bool TryNormalizeBuiltInValue(string value, out ResolvedService normalizedValue)
+    public static bool TryCreateBuiltInValue(string value, out ResolvedService resolvedValue)
     {
-        normalizedValue = default;
+        resolvedValue = default;
         if (string.IsNullOrWhiteSpace(value))
         {
             return false;
@@ -96,11 +94,64 @@ public static class ServiceValueParser
 
         if (value.Trim().Equals("any", StringComparison.Ordinal))
         {
-            normalizedValue = CreateAnyResolvedService();
+            resolvedValue = CreateAnyResolvedService();
             return true;
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// 3 要素の canonical 直指定サービス表現を解決済みサービス定義へ変換します。
+    /// </summary>
+    /// <param name="value">直指定候補のサービス表現。</param>
+    /// <param name="service">変換できた解決済みサービス定義。</param>
+    /// <returns>canonical 直指定として解釈できた場合は <see langword="true"/>。</returns>
+    public static bool TryParseCanonicalDirectReference(string value, out ResolvedService service)
+    {
+        service = default;
+
+        var parts = SplitServiceReferenceParts(value);
+        if (parts.Length != 3)
+        {
+            return false;
+        }
+
+        var candidate = new ResolvedService
+        {
+            Protocol = parts[0],
+            SourcePort = parts[1],
+            DestinationPort = parts[2],
+            Kind = null
+        };
+
+        try
+        {
+            ValidateDirectService(candidate);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+
+        service = candidate;
+        return true;
+    }
+
+    /// <summary>
+    /// 未解決サービス参照を Kind 指定として表す解決済みサービス定義を作成します。
+    /// </summary>
+    /// <param name="kind">Kind 指定。</param>
+    /// <returns>Kind 指定を表す解決済みサービス定義。</returns>
+    public static ResolvedService CreateKindResolvedService(string kind)
+    {
+        return new ResolvedService
+        {
+            Protocol = "255",
+            SourcePort = "0",
+            DestinationPort = "0",
+            Kind = TrimRequired(kind, "Service kind")
+        };
     }
 
     /// <summary>
@@ -110,9 +161,33 @@ public static class ServiceValueParser
     /// <returns>変換したサービス範囲列。</returns>
     public static IEnumerable<ServiceValue> Parse(ResolvedService service)
     {
-        var protocolRanges = ParseDelimitedRanges(service.Protocol, 0, 255).ToArray();
-        var sourcePortRanges = ParseDelimitedRanges(service.SourcePort, 0, 65535).ToArray();
-        var destinationPortRanges = ParseDelimitedRanges(service.DestinationPort, 0, 65535).ToArray();
+        SignedRange[] protocolRanges;
+        SignedRange[] sourcePortRanges;
+        SignedRange[] destinationPortRanges;
+
+        if (IsKindSentinelService(service))
+        {
+            protocolRanges = ParseDelimitedRanges(service.Protocol, 255, 255).ToArray();
+            sourcePortRanges = ParseDelimitedRanges(service.SourcePort, 0, 0).ToArray();
+            destinationPortRanges = ParseDelimitedRanges(service.DestinationPort, 0, 0).ToArray();
+        }
+        else if (IsBuiltInAnyService(service))
+        {
+            protocolRanges = ParseDelimitedRanges(service.Protocol, 0, 255).ToArray();
+            sourcePortRanges = ParseDelimitedRanges(service.SourcePort, 0, 65535).ToArray();
+            destinationPortRanges = ParseDelimitedRanges(service.DestinationPort, 0, 65535).ToArray();
+        }
+        else
+        {
+            if (service.Kind is not null)
+            {
+                throw new FormatException("Kind service must use the Kind sentinel range.");
+            }
+
+            protocolRanges = ParseDelimitedRanges(service.Protocol, 0, 254).ToArray();
+            sourcePortRanges = ParseDelimitedRanges(service.SourcePort, 1, 65535).ToArray();
+            destinationPortRanges = ParseDelimitedRanges(service.DestinationPort, 1, 65535).ToArray();
+        }
 
         foreach (var protocolRange in protocolRanges)
         {
@@ -123,42 +198,6 @@ public static class ServiceValueParser
                     yield return CreateServiceValue(protocolRange, sourcePortRange, destinationPortRange, service.Kind);
                 }
             }
-        }
-    }
-
-    /// <summary>
-    /// 3 要素の直指定サービス表現を解決済みサービス定義へ変換します。
-    /// </summary>
-    /// <param name="value">直指定候補のサービス表現。</param>
-    /// <param name="service">変換できた解決済みサービス定義。</param>
-    /// <returns>直指定として解釈できた場合は <see langword="true"/>。</returns>
-    private static bool TryCreateDirectResolvedService(string value, out ResolvedService service)
-    {
-        service = default;
-
-        var parts = value.Split(new[] { ' ', '\t' }, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length != 3)
-        {
-            return false;
-        }
-
-        try
-        {
-            service = new ResolvedService
-            {
-                Protocol = NormalizeProtocolValue(parts[0]),
-                SourcePort = NormalizePortValue(parts[1]),
-                DestinationPort = NormalizePortValue(parts[2]),
-                Kind = null
-            };
-
-            _ = Parse(service).ToArray();
-            return true;
-        }
-        catch (FormatException)
-        {
-            service = default;
-            return false;
         }
     }
 
@@ -174,22 +213,6 @@ public static class ServiceValueParser
             SourcePort = AnyServicePortRange,
             DestinationPort = AnyServicePortRange,
             Kind = null
-        };
-    }
-
-    /// <summary>
-    /// Kind 指定を表す解決済みサービス定義を作成します。
-    /// </summary>
-    /// <param name="kind">Kind 指定。</param>
-    /// <returns>Kind 指定を表す解決済みサービス定義。</returns>
-    private static ResolvedService CreateKindResolvedService(string kind)
-    {
-        return new ResolvedService
-        {
-            Protocol = "255",
-            SourcePort = "0",
-            DestinationPort = "0",
-            Kind = kind
         };
     }
 
@@ -288,108 +311,66 @@ public static class ServiceValueParser
     }
 
     /// <summary>
-    /// プロトコル表現を後続処理が解釈できる数値表現へ正規化します。
+    /// 直指定サービスとして妥当な数値範囲だけで構成されているか検証します。
     /// </summary>
-    /// <param name="protocol">正規化対象のプロトコル表現。</param>
-    /// <returns>正規化したプロトコル表現。</returns>
-    private static string NormalizeProtocolValue(string protocol)
+    /// <param name="service">検証対象の解決済みサービス定義。</param>
+    private static void ValidateDirectService(ResolvedService service)
     {
-        var trimmed = protocol.Trim();
-        if (trimmed.Equals("any", StringComparison.Ordinal))
-        {
-            return AnyProtocolRange;
-        }
-
-        return NormalizeDelimitedRangeValue(trimmed, NormalizeProtocolRangeItem);
+        _ = ParseDelimitedRanges(service.Protocol, 0, 254).ToArray();
+        _ = ParseDelimitedRanges(service.SourcePort, 1, 65535).ToArray();
+        _ = ParseDelimitedRanges(service.DestinationPort, 1, 65535).ToArray();
     }
 
     /// <summary>
-    /// ポート表現の any を後続処理が解釈できる数値範囲へ正規化します。
+    /// サービス参照文字列を空白区切りの要素へ分割します。
     /// </summary>
-    /// <param name="port">正規化対象のポート表現。</param>
-    /// <returns>正規化したポート表現。</returns>
-    private static string NormalizePortValue(string port)
+    /// <param name="value">分割対象のサービス参照。</param>
+    /// <returns>空白区切りの要素列。</returns>
+    internal static string[] SplitServiceReferenceParts(string value)
     {
-        var trimmed = port.Trim();
-
-        if (trimmed.Equals("any", StringComparison.Ordinal))
-        {
-            return AnyPortRange;
-        }
-
-        return NormalizeDelimitedRangeValue(trimmed, NormalizePortRangeItem);
+        return value.Split(new[] { ' ', '\t' }, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
     }
 
     /// <summary>
-    /// カンマ区切りの数値範囲表現を、各要素ごとに正規化します。
+    /// 必須文字列値を trim します。
     /// </summary>
-    /// <param name="value">正規化対象の範囲表現。</param>
-    /// <param name="normalizeItem">要素単位の正規化処理。</param>
-    /// <returns>正規化した範囲表現。</returns>
-    private static string NormalizeDelimitedRangeValue(string value, Func<string, string> normalizeItem)
+    /// <param name="value">対象文字列。</param>
+    /// <param name="fieldName">診断用の項目名。</param>
+    /// <returns>trim 後の文字列。</returns>
+    private static string TrimRequired(string value, string fieldName)
     {
-        ArgumentNullException.ThrowIfNull(normalizeItem);
-
-        var items = value
-            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-            .Select(normalizeItem)
-            .ToArray();
-
-        if (items.Length == 0)
+        if (string.IsNullOrWhiteSpace(value))
         {
-            throw new FormatException("Range value is required.");
+            throw new FormatException($"{fieldName} is required.");
         }
 
-        return string.Join(",", items);
+        return value.Trim();
     }
 
     /// <summary>
-    /// IP プロトコル番号範囲の終端 255 を 254 へ丸めます。
+    /// サービス参照そのものの組み込み any かを判定します。
     /// </summary>
-    /// <param name="value">正規化対象のプロトコル範囲要素。</param>
-    /// <returns>正規化したプロトコル範囲要素。</returns>
-    private static string NormalizeProtocolRangeItem(string value)
+    /// <param name="service">判定対象の解決済みサービス定義。</param>
+    /// <returns>組み込み any であれば <see langword="true"/>。</returns>
+    private static bool IsBuiltInAnyService(ResolvedService service)
     {
-        if (!value.Contains('-', StringComparison.Ordinal))
-        {
-            return ResolveProtocolNumber(value).ToString();
-        }
-
-        var range = ParseSignedRange(value, 0, 255);
-        var finish = range.Finish == 255 ? 254 : range.Finish;
-        if (range.Start > finish)
-        {
-            throw new FormatException($"Value is out of range: {value}");
-        }
-
-        return range.Start == finish
-            ? range.Start.ToString()
-            : $"{range.Start}-{finish}";
+        return service.Kind is null
+            && service.Protocol.Trim().Equals(AnyServiceProtocolRange, StringComparison.Ordinal)
+            && service.SourcePort.Trim().Equals(AnyServicePortRange, StringComparison.Ordinal)
+            && service.DestinationPort.Trim().Equals(AnyServicePortRange, StringComparison.Ordinal);
     }
 
     /// <summary>
-    /// ポート番号範囲の開始 0 を 1 へ丸めます。
+    /// Kind 指定を表すための番兵サービスかを判定します。
     /// </summary>
-    /// <param name="value">正規化対象のポート範囲要素。</param>
-    /// <returns>正規化したポート範囲要素。</returns>
-    private static string NormalizePortRangeItem(string value)
+    /// <param name="service">判定対象の解決済みサービス定義。</param>
+    /// <returns>Kind 指定用の番兵表現であれば <see langword="true"/>。</returns>
+    private static bool IsKindSentinelService(ResolvedService service)
     {
-        if (value.Equals("any", StringComparison.Ordinal))
-        {
-            return AnyPortRange;
-        }
-
-        var range = ParseSignedRange(value, 0, 65535);
-        var start = range.Start == 0 ? 1 : range.Start;
-        var finish = range.Finish == 0 ? 1 : range.Finish;
-        if (start > finish)
-        {
-            throw new FormatException($"Value is out of range: {value}");
-        }
-
-        return start == finish
-            ? start.ToString()
-            : $"{start}-{finish}";
+        return !string.IsNullOrWhiteSpace(service.Kind)
+            && service.Protocol.Trim().Equals("255", StringComparison.Ordinal)
+            && service.SourcePort.Trim().Equals("0", StringComparison.Ordinal)
+            && service.DestinationPort.Trim().Equals("0", StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -403,26 +384,6 @@ public static class ServiceValueParser
             && serviceDefinition.Protocol.Trim().Equals("255", StringComparison.Ordinal)
             && serviceDefinition.SourcePort.Trim().Equals("0", StringComparison.Ordinal)
             && serviceDefinition.DestinationPort.Trim().Equals("0", StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// 小文字のプロトコル名または番号を IP プロトコル番号へ解決します。
-    /// </summary>
-    /// <param name="protocol">小文字のプロトコル名または番号。</param>
-    /// <returns>IP プロトコル番号。</returns>
-    private static int ResolveProtocolNumber(string protocol)
-    {
-        var trimmed = protocol.Trim();
-        return trimmed switch
-        {
-            "tcp" => 6,
-            "udp" => 17,
-            "icmp" => 1,
-            "sctp" => 132,
-            _ => int.TryParse(trimmed, out var numericProtocol)
-                ? numericProtocol
-                : throw new FormatException($"Unsupported protocol: {protocol}")
-        };
     }
 
     /// <summary>

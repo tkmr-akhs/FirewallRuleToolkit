@@ -59,54 +59,8 @@ public sealed class PaloAltoAddressDefinitionCsvReader : IReadRepository<Address
         return new AddressDefinition
         {
             Name = CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoAddressDefinitions.NameHeader),
-            Value = NormalizeAddressValue(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoAddressDefinitions.AddressHeader))
+            Value = PaloAltoAddressValueNormalizer.NormalizeDefinitionValue(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoAddressDefinitions.AddressHeader))
         };
-    }
-
-    private static string NormalizeAddressValue(string value)
-    {
-        var trimmed = value.Trim();
-
-        if (trimmed.Contains('/', StringComparison.Ordinal))
-        {
-            return trimmed;
-        }
-
-        return TryParseIpv4Address(trimmed, out var hostValue)
-            ? $"{FormatIpv4Address(hostValue)}/32"
-            : trimmed;
-    }
-
-    private static bool TryParseIpv4Address(string value, out uint address)
-    {
-        address = 0;
-
-        var octets = value.Split('.', StringSplitOptions.TrimEntries);
-        if (octets.Length != 4)
-        {
-            return false;
-        }
-
-        for (var index = 0; index < octets.Length; index++)
-        {
-            if (!byte.TryParse(octets[index], out var octet))
-            {
-                return false;
-            }
-
-            address = (address << 8) | octet;
-        }
-
-        return true;
-    }
-
-    private static string FormatIpv4Address(uint value)
-    {
-        return string.Join('.',
-            (value >> 24) & 0xff,
-            (value >> 16) & 0xff,
-            (value >> 8) & 0xff,
-            value & 0xff);
     }
 }
 

@@ -66,7 +66,7 @@ public sealed class PaloAltoServiceGroupCsvReader : IReadRepository<ServiceGroup
             yield return new ServiceGroupMembership
             {
                 GroupName = groupName,
-                MemberName = memberName
+                MemberName = PaloAltoServiceValueNormalizer.NormalizePolicyServiceReference(memberName)
             };
         }
     }

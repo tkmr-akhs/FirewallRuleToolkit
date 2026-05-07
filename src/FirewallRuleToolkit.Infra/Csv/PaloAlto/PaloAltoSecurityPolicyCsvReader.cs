@@ -63,11 +63,17 @@ public sealed class PaloAltoSecurityPolicyCsvReader : IReadRepository<ImportedSe
             Index = EntityValueCodec.ParsePolicyIndex(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoSecurityPolicies.IndexHeader)),
             Name = CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoSecurityPolicies.NameHeader),
             FromZones = SplitMultiValue(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoSecurityPolicies.FromZoneHeader)).ToArray(),
-            SourceAddressReferences = SplitMultiValue(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoSecurityPolicies.SourceAddressHeader)).ToArray(),
+            SourceAddressReferences = SplitMultiValue(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoSecurityPolicies.SourceAddressHeader))
+                .Select(PaloAltoAddressValueNormalizer.NormalizePolicyReference)
+                .ToArray(),
             ToZones = SplitMultiValue(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoSecurityPolicies.ToZoneHeader)).ToArray(),
-            DestinationAddressReferences = SplitMultiValue(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoSecurityPolicies.DestinationAddressHeader)).ToArray(),
+            DestinationAddressReferences = SplitMultiValue(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoSecurityPolicies.DestinationAddressHeader))
+                .Select(PaloAltoAddressValueNormalizer.NormalizePolicyReference)
+                .ToArray(),
             Applications = SplitMultiValue(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoSecurityPolicies.ApplicationHeader)).ToArray(),
-            ServiceReferences = SplitMultiValue(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoSecurityPolicies.ServiceHeader)).ToArray(),
+            ServiceReferences = SplitMultiValue(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoSecurityPolicies.ServiceHeader))
+                .Select(PaloAltoServiceValueNormalizer.NormalizePolicyServiceReference)
+                .ToArray(),
             Action = EntityValueCodec.ParseAction(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoSecurityPolicies.ActionHeader)),
             GroupId = ParseGroupIdFromRuleUsageContent(ruleUsageContent ?? string.Empty)
         };

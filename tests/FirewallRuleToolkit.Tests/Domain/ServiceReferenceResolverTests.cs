@@ -32,7 +32,7 @@ public sealed class ServiceReferenceResolverTests
             }),
             new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
             {
-                ["bundle"] = ["svc-web", "udp 1-65535 53", "svc-app-default"]
+                ["bundle"] = ["svc-web", "17 1-65535 53", "svc-app-default"]
             }));
 
         var resolved = resolver.Resolve(["bundle"]).ToArray();
@@ -63,13 +63,13 @@ public sealed class ServiceReferenceResolverTests
     }
 
     [Fact]
-    public void Resolve_DirectService_WithExplicitSourceAndDestinationPorts_NormalizesValues()
+    public void Resolve_DirectService_WithCanonicalSourceAndDestinationPorts_UsesValuesAsIs()
     {
         var resolver = new ServiceReferenceResolver(
             new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)),
             new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
 
-        var resolved = resolver.Resolve(["tcp any 80-90"]).Single();
+        var resolved = resolver.Resolve(["6 1-65535 80-90"]).Single();
 
         Assert.Equal("6", resolved.Protocol);
         Assert.Equal("1-65535", resolved.SourcePort);
@@ -94,11 +94,13 @@ public sealed class ServiceReferenceResolverTests
     }
 
     [Fact]
-    public void Resolve_DirectService_WhenThreePartValueIsInvalid_FallsBackToKind()
+    public void Resolve_DirectService_WhenThreePartValueIsInvalid_FallsBackToKindWithReport()
     {
+        var fallbacks = new List<string>();
         var resolver = new ServiceReferenceResolver(
             new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)),
             new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
+        resolver.KindFallbackOccurred += fallbacks.Add;
 
         var resolved = resolver.Resolve(["tcp hoge 80"]).Single();
 
@@ -106,36 +108,40 @@ public sealed class ServiceReferenceResolverTests
         Assert.Equal("0", resolved.SourcePort);
         Assert.Equal("0", resolved.DestinationPort);
         Assert.Equal("tcp hoge 80", resolved.Kind);
+        var fallback = Assert.Single(fallbacks);
+        Assert.Equal("tcp hoge 80", fallback);
     }
 
     [Fact]
-    public void Resolve_DirectService_WhenAnyCaseDiffers_FallsBackToKind()
+    public void Resolve_DirectService_WhenAnyCaseDiffers_FallsBackToKindWithReport()
     {
+        var fallbacks = new List<string>();
         var resolver = new ServiceReferenceResolver(
             new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)),
             new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
+        resolver.KindFallbackOccurred += fallbacks.Add;
 
         var resolved = resolver.Resolve(["tcp ANY 80"]).Single();
 
-        Assert.Equal("255", resolved.Protocol);
-        Assert.Equal("0", resolved.SourcePort);
-        Assert.Equal("0", resolved.DestinationPort);
         Assert.Equal("tcp ANY 80", resolved.Kind);
+        var fallback = Assert.Single(fallbacks);
+        Assert.Equal("tcp ANY 80", fallback);
     }
 
     [Fact]
-    public void Resolve_DirectService_WhenProtocolAliasCaseDiffers_FallsBackToKind()
+    public void Resolve_DirectService_WhenProtocolAliasCaseDiffers_FallsBackToKindWithReport()
     {
+        var fallbacks = new List<string>();
         var resolver = new ServiceReferenceResolver(
             new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)),
             new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
+        resolver.KindFallbackOccurred += fallbacks.Add;
 
         var resolved = resolver.Resolve(["TCP any 80"]).Single();
 
-        Assert.Equal("255", resolved.Protocol);
-        Assert.Equal("0", resolved.SourcePort);
-        Assert.Equal("0", resolved.DestinationPort);
         Assert.Equal("TCP any 80", resolved.Kind);
+        var fallback = Assert.Single(fallbacks);
+        Assert.Equal("TCP any 80", fallback);
     }
 
     [Fact]
@@ -222,7 +228,7 @@ public sealed class ServiceReferenceResolverTests
     }
 
     [Fact]
-    public void Resolve_ServiceDefinition_WithAnyValues_NormalizesForExpansion()
+    public void Resolve_ServiceDefinition_WithAnyValues_ThrowsFormatException()
     {
         var resolver = new ServiceReferenceResolver(
             new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)
@@ -238,16 +244,11 @@ public sealed class ServiceReferenceResolverTests
             }),
             new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
 
-        var resolved = resolver.Resolve(["svc-any"]).Single();
-
-        Assert.Equal("0-254", resolved.Protocol);
-        Assert.Equal("1-65535", resolved.SourcePort);
-        Assert.Equal("1-65535", resolved.DestinationPort);
-        Assert.NotEmpty(ResolvedServiceExpander.Parse(resolved));
+        Assert.Throws<FormatException>(() => resolver.Resolve(["svc-any"]).ToArray());
     }
 
     [Fact]
-    public void Resolve_ServiceDefinition_WithProtocolRangesEnding255_NormalizesRangeEndTo254()
+    public void Resolve_ServiceDefinition_WithProtocolRangesEnding255_ThrowsFormatException()
     {
         var resolver = new ServiceReferenceResolver(
             new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)
@@ -256,23 +257,18 @@ public sealed class ServiceReferenceResolverTests
                 {
                     Name = "svc-protocol-any",
                     Protocol = "0-255,100-255,6",
-                    SourcePort = "any",
-                    DestinationPort = "any",
+                    SourcePort = "1-65535",
+                    DestinationPort = "1-65535",
                     Kind = null
                 }
             }),
             new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
 
-        var resolved = resolver.Resolve(["svc-protocol-any"]).Single();
-
-        Assert.Equal("0-254,100-254,6", resolved.Protocol);
-        Assert.Equal("1-65535", resolved.SourcePort);
-        Assert.Equal("1-65535", resolved.DestinationPort);
-        Assert.NotEmpty(ResolvedServiceExpander.Parse(resolved));
+        Assert.Throws<FormatException>(() => resolver.Resolve(["svc-protocol-any"]).ToArray());
     }
 
     [Fact]
-    public void Resolve_ServiceDefinition_WithDelimitedPortRangesStarting0_NormalizesEachRangeStartTo1()
+    public void Resolve_ServiceDefinition_WithDelimitedPortRangesStarting0_ThrowsFormatException()
     {
         var resolver = new ServiceReferenceResolver(
             new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)
@@ -288,12 +284,27 @@ public sealed class ServiceReferenceResolverTests
             }),
             new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
 
-        var resolved = resolver.Resolve(["svc-port-any"]).Single();
+        Assert.Throws<FormatException>(() => resolver.Resolve(["svc-port-any"]).ToArray());
+    }
 
-        Assert.Equal("6", resolved.Protocol);
-        Assert.Equal("80,1-65535,254", resolved.SourcePort);
-        Assert.Equal("1-1023,443", resolved.DestinationPort);
-        Assert.NotEmpty(ResolvedServiceExpander.Parse(resolved));
+    [Fact]
+    public void Resolve_ServiceDefinition_WithPortZeroItems_ThrowsFormatException()
+    {
+        var resolver = new ServiceReferenceResolver(
+            new StubServiceDefinitionStore(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)
+            {
+                ["svc-port-zero"] = new()
+                {
+                    Name = "svc-port-zero",
+                    Protocol = "6",
+                    SourcePort = "0,80",
+                    DestinationPort = "0-0,443",
+                    Kind = null
+                }
+            }),
+            new StubServiceGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
+
+        Assert.Throws<FormatException>(() => resolver.Resolve(["svc-port-zero"]).ToArray());
     }
 
     [Fact]

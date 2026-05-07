@@ -24,7 +24,7 @@ public sealed class PaloAltoCsvReadersTests
     public void GetAll_NormalizesHostAddressToCidr()
     {
         var path = CreateTempFile(
-            $"{HeaderName},{HeaderAddress}\nhost-1,192.168.10.20\nrange-1,192.168.10.20-192.168.10.30",
+            $"{HeaderName},{HeaderAddress}\nhost-1,192.168.10.20\nrange-1,192.168.10.20-192.168.10.30\ncidr-host,192.168.10.20/24",
             new UTF8Encoding(false));
 
         try
@@ -44,6 +44,11 @@ public sealed class PaloAltoCsvReadersTests
                 {
                     Assert.Equal("range-1", item.Name);
                     Assert.Equal("192.168.10.20-192.168.10.30", item.Value);
+                },
+                item =>
+                {
+                    Assert.Equal("cidr-host", item.Name);
+                    Assert.Equal("192.168.10.0/24", item.Value);
                 });
         }
         finally
@@ -93,7 +98,7 @@ public sealed class PaloAltoCsvReadersTests
                     Assert.Equal("svc-composite", item.Name);
                     Assert.Equal("17", item.Protocol);
                     Assert.Equal("1,1-7,8", item.SourcePort);
-                    Assert.Equal("1,443,1000-1002", item.DestinationPort);
+                    Assert.Equal("443,1000-1002", item.DestinationPort);
                 },
                 item =>
                 {
@@ -114,7 +119,7 @@ public sealed class PaloAltoCsvReadersTests
     {
         var path = CreateTempFile(
             $",{HeaderName},{HeaderFromZone},{HeaderSourceAddress},{HeaderToZone},{HeaderDestinationAddress},{HeaderApplication},{HeaderService},{HeaderAction},{HeaderRuleUsageContent}\n" +
-            $"1,rule-1,trust,src-group;10.0.0.0/24,untrust,dst-host,any,svc-group;TCP 1-65535 80,\u8A31\u53EF,GRP-01|memo\n" +
+            $"1,rule-1,trust,src-group;10.0.0.0/24,untrust,dst-host,any,svc-group;TCP 1-65535 80;tcp any 443,\u8A31\u53EF,GRP-01|memo\n" +
             $"2,rule-2,trust,10.0.1.0/24,untrust,192.168.1.10,any,any,\u8A31\u53EF,no-separator\n" +
             $"3,rule-3,trust,10.0.2.0/24,untrust,192.168.2.10,any,any,\u8A31\u53EF,",
             new UTF8Encoding(false));
@@ -129,8 +134,9 @@ public sealed class PaloAltoCsvReadersTests
             Assert.Equal("GRP-01", policies[0].GroupId);
             Assert.Equal(["src-group", "10.0.0.0/24"], policies[0].SourceAddressReferences);
             Assert.Equal(["dst-host"], policies[0].DestinationAddressReferences);
-            Assert.Equal(["svc-group", "TCP 1-65535 80"], policies[0].ServiceReferences);
+            Assert.Equal(["svc-group", "TCP 1-65535 80", "6 1-65535 443"], policies[0].ServiceReferences);
             Assert.Equal(string.Empty, policies[1].GroupId);
+            Assert.Equal(["192.168.1.10/32"], policies[1].DestinationAddressReferences);
             Assert.Equal(string.Empty, policies[2].GroupId);
         }
         finally

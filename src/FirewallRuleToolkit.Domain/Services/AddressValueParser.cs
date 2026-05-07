@@ -51,52 +51,23 @@ public static class AddressValueParser
             };
         }
 
-        var host = ParseIpv4Address(trimmed);
-        return new AddressValue
+        if (TryParseIpv4Address(trimmed, out _))
         {
-            Start = host,
-            Finish = host
-        };
+            throw new FormatException($"Single IPv4 address must be expressed as CIDR /32: {trimmed}");
+        }
+
+        throw new FormatException($"Unsupported address value: {trimmed}");
     }
 
     /// <summary>
-    /// 解決済みアドレス値として扱える表現へ正規化します。
+    /// 組み込みアドレス表現を解決済みアドレス値として解釈します。
     /// </summary>
-    /// <param name="value">正規化対象のアドレス文字列表現。</param>
-    /// <returns>正規化した解決済みアドレス値。</returns>
-    public static string NormalizeResolvedValue(string value)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(value);
-
-        var trimmed = value.Trim();
-        if (TryNormalizeBuiltInValue(trimmed, out var builtInValue))
-        {
-            return builtInValue;
-        }
-
-        if (trimmed.Contains('/', StringComparison.Ordinal)
-            || trimmed.Contains('-', StringComparison.Ordinal))
-        {
-            return trimmed;
-        }
-
-        if (TryParseIpv4Address(trimmed, out var hostValue))
-        {
-            return $"{FormatIpv4Address(hostValue)}/32";
-        }
-
-        return trimmed;
-    }
-
-    /// <summary>
-    /// 組み込みアドレス表現を解決済みアドレス値へ正規化します。
-    /// </summary>
-    /// <param name="value">正規化対象のアドレス文字列表現。</param>
-    /// <param name="normalizedValue">正規化した解決済みアドレス値。</param>
+    /// <param name="value">変換対象のアドレス文字列表現。</param>
+    /// <param name="resolvedValue">解釈した解決済みアドレス値。</param>
     /// <returns>組み込みアドレス表現として解釈できた場合は <see langword="true"/>。</returns>
-    public static bool TryNormalizeBuiltInValue(string value, out string normalizedValue)
+    public static bool TryCreateBuiltInValue(string value, out string resolvedValue)
     {
-        normalizedValue = string.Empty;
+        resolvedValue = string.Empty;
         if (string.IsNullOrWhiteSpace(value))
         {
             return false;
@@ -104,7 +75,7 @@ public static class AddressValueParser
 
         if (value.Trim().Equals("any", StringComparison.Ordinal))
         {
-            normalizedValue = "0.0.0.0/0";
+            resolvedValue = "0.0.0.0/0";
             return true;
         }
 
@@ -130,13 +101,13 @@ public static class AddressValueParser
             throw new FormatException($"Unsupported CIDR prefix length: {value}");
         }
 
-        var mask = prefixLength switch
-        {
-            0 => 0u,
-            32 => uint.MaxValue,
-            _ => uint.MaxValue << (32 - prefixLength)
-        };
+        var mask = CreateCidrMask(prefixLength);
         var start = address & mask;
+        if (start != address)
+        {
+            throw new FormatException($"CIDR address must be a network address: {value}");
+        }
+
         var finish = start | ~mask;
         return new AddressValue
         {
@@ -158,6 +129,21 @@ public static class AddressValueParser
         }
 
         throw new FormatException($"Unsupported IPv4 address: {value}");
+    }
+
+    /// <summary>
+    /// CIDR prefix length から IPv4 mask を作成します。
+    /// </summary>
+    /// <param name="prefixLength">CIDR prefix length。</param>
+    /// <returns>IPv4 mask。</returns>
+    private static uint CreateCidrMask(int prefixLength)
+    {
+        return prefixLength switch
+        {
+            0 => 0u,
+            32 => uint.MaxValue,
+            _ => uint.MaxValue << (32 - prefixLength)
+        };
     }
 
     /// <summary>
@@ -189,17 +175,4 @@ public static class AddressValueParser
         return true;
     }
 
-    /// <summary>
-    /// IPv4 アドレスの数値表現をドット区切り表現へ変換します。
-    /// </summary>
-    /// <param name="value">IPv4 アドレスの数値表現。</param>
-    /// <returns>IPv4 アドレスのドット区切り表現。</returns>
-    private static string FormatIpv4Address(uint value)
-    {
-        return string.Join('.',
-            (value >> 24) & 0xff,
-            (value >> 16) & 0xff,
-            (value >> 8) & 0xff,
-            value & 0xff);
-    }
 }

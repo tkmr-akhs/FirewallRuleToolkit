@@ -11,7 +11,7 @@ public sealed class SecurityPolicyAtomizeRunResult
     public int ProcessedSourcePolicyCount { get; init; }
 
     /// <summary>
-    /// スキップした入力ポリシー件数を取得します。
+    /// アドレス条件を atomic 化できずにスキップした入力ポリシー件数を取得します。
     /// </summary>
     public int SkippedSourcePolicyCount { get; init; }
 }

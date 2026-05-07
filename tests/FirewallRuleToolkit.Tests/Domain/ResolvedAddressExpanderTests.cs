@@ -52,4 +52,17 @@ public sealed class ResolvedAddressExpanderTests
         Assert.Equal(0xC0A80108u, value.Start);
         Assert.Equal(0xC0A8010Bu, value.Finish);
     }
+
+    [Fact]
+    public void Expand_WhenSingleIpv4DoesNotHavePrefix_ThrowsFormatException()
+    {
+        Assert.Throws<FormatException>(() => ResolvedAddressExpander.Expand(
+            [
+                new ResolvedAddress
+                {
+                    Value = "192.168.1.10"
+                }
+            ],
+            threshold: 10).ToArray());
+    }
 }

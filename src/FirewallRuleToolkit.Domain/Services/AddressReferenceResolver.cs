@@ -1,7 +1,7 @@
 ﻿namespace FirewallRuleToolkit.Domain.Services;
 
 /// <summary>
-/// アドレス参照名を解決し、直接指定値の解釈は <see cref="AddressValueParser"/> に委譲します。
+/// アドレス参照名を解決し、直接指定値の検証・解釈は <see cref="AddressValueParser"/> に委譲します。
 /// </summary>
 public sealed class AddressReferenceResolver
 {
@@ -56,7 +56,7 @@ public sealed class AddressReferenceResolver
     /// <returns>解決後のアドレス値列。</returns>
     private IEnumerable<ResolvedAddress> ResolveValue(string value, HashSet<string> visitedGroups)
     {
-        if (AddressValueParser.TryNormalizeBuiltInValue(value, out var builtInValue))
+        if (AddressValueParser.TryCreateBuiltInValue(value, out var builtInValue))
         {
             yield return CreateResolvedAddress(builtInValue);
             yield break;
@@ -93,7 +93,7 @@ public sealed class AddressReferenceResolver
             yield break;
         }
 
-        yield return CreateResolvedAddress(AddressValueParser.NormalizeResolvedValue(value));
+        yield return CreateResolvedAddress(value.Trim());
     }
 
     /// <summary>

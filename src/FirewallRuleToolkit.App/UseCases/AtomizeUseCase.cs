@@ -56,7 +56,13 @@ public static class AtomizeUseCase
                     "atomize skipped policy. policy: {PolicyName}, index: {PolicyIndex}, reason: {Reason}",
                     skippedPolicy.PolicyName,
                     skippedPolicy.PolicyIndex,
-                    skippedPolicy.Reason));
+                    skippedPolicy.Reason),
+            reportServiceReferenceKindFallback: fallback =>
+                logger.LogWarning(
+                    "service reference looks like a direct service but is not canonical; falling back to Kind. policy={PolicyName}, index={PolicyIndex}, service={ServiceReference}",
+                    fallback.PolicyName,
+                    fallback.PolicyIndex,
+                    fallback.ServiceReference));
 
         writeSession.ToolMetadata.SetAtomizeThreshold(threshold);
         writeSession.Commit();

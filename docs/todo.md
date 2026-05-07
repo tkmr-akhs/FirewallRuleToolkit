@@ -15,11 +15,6 @@
 
 ## 高優先度
 
-- [ ] [spec] CIDR 入力のホスト部を丸めるか拒否するかを明確にする。
-  - `AddressValueParser.ParseCidr` は `192.168.1.10/24` のような host bit 付き CIDR を `192.168.1.0/24` 相当へ丸める。
-  - `PaloAltoAddressDefinitionCsvReader` は CIDR 文字列を import 時に正規化しないため、実際の丸めは atomize 時に起き、入力ミスなのか意図したネットワーク表記なのか診断できない。
-  - 方針案: 製品 CSV として許容するなら仕様へ明記し、拒否するなら import validation で元値を示してエラーにする。
-
 ## 中優先度
 
 - [ ] [spec] 高一致率再編成の集合演算モデルを整理する。
@@ -102,10 +97,10 @@
   - 方針案: repository lifecycle に stage generation を導入し、上流成果物更新時に下流成果物を無効化する。
   - 備考: 利用者は不特定多数ではなく開発者自身と近縁者だけを想定。当面は古い派生データが残存することを理解したうえで使用する。
 
-- [ ] [ux] warning / skip を strict mode で失敗扱いにできるようにする。
+- [ ] [ux] warning を strict mode で失敗扱いにできるようにする。
   - `merge` / `test` の警告が終了コードへ反映されず、CI で検出しづらい。
-  - `atomize` のスキップ件数も成功扱いのままなので、入力漏れを見逃しやすい。
-  - 方針案: 既定は互換性維持、`--strict` などで warning / skip を非 0 終了にする。
+  - `atomize` は IPv4 条件へ展開不能な address を含むポリシーを warning 付きでスキップするため、この TODO では成功扱いの warning を対象にする。
+  - 方針案: 既定は互換性維持、`--strict` などで warning を非 0 終了にする。
 
 - [ ] [ux] action 順序境界を越える Allow 統合を抑止する CLI option を追加する。
   - 既定では現行どおり、異なる action の元 index 範囲衝突を merge 後 warning として検出する。
@@ -202,6 +197,13 @@
   - App / UseCase でも `ProgramLogger` の global access が残っており、テストや並列実行時の分離が弱い。
   - 方針案: Domain event / diagnostic sink / App 側 observer などへ寄せる。
 
+- [ ] [ref] Domain workflow の通知 callback / event 境界を整理する。
+  - `ServiceReferenceResolver.KindFallbackOccurred` / `SecurityPolicyResolver.ServiceReferenceKindFallbackOccurred` のような下位 Domain event は、runner が実行中だけ購読し、`Run` で受け取った Action へ流す形に寄せられる。
+  - `SecurityPolicyAtomizeRunner.Run` の `reportSkippedPolicy` / `reportServiceReferenceKindFallback` は、入力不備やフォールバックを呼び出し元へ通知し、warning log などの action を App / CLI 側で定義する境界である。
+  - `SecurityPolicyTestRunner.Run` の `reportFinding` は test の主要出力に近いため、event 化する場合も result / finding stream としての責務を崩さないように整理する。
+  - `onSourcePolicyProcessed` / `onAtomicPolicyProcessed` の進捗 callback も event / observer へ寄せられる可能性はあるが、進捗間隔や利用者向けログ文言は UseCase / CLI 側の責務として残す。
+  - 方針案: 生成物を流す callback、主要結果を返す stream、診断・進捗を伝える event / observer を区別し、Domain service のメソッド引数が運用ログ都合で増えない形へ寄せる。
+
 - [ ] [ref] SQLite schema lifecycle を明示する。
   - repository ごとに schema 作成 SQL、`Initialize()`、`EnsureTableAvailable()` が分散しており、schema 変更や migration の責務が散っている。
   - 方針案: DB 初期化 service または migration service に寄せる。
@@ -289,11 +291,6 @@
   - service 参照そのものの `any` は `0-255`、名前付きサービス定義や直指定の `any` は `0-254` に寄るため、`255` の意味が入口によって変わる。
   - 方針案: `Kind` 指定を数値サービス条件とは別 union case として持つか、IP protocol `255` の扱いを仕様として明示する。
 
-- [ ] [spec] サービス入力 port `0` の正規化範囲を明確にする。
-  - `PaloAltoServiceDefinitionCsvReader.NormalizePortItem` と `ServiceValueParser.NormalizePortRangeItem` は、`0` や `0-0` を `1` に丸める。
-  - 製品仕様では `0-xxxx` 範囲を `1-xxxx` へ補正すると読めるが、単独の `0` を有効値、入力ミス、または `any` 相当の別表現のどれとして扱うかは明確でない。
-  - 方針案: Palo Alto CSV 由来の補正と Domain 直指定サービスの検証を分け、単独 `0` を許容する場合もログまたは仕様で明示する。
-
 - [ ] [ref] テスト名・コメントに残った旧称と文字化けを掃除する。
   - App 層は `UseCase` 命名へ寄っているが、テスト ファイル名に `*CommandActionTests.cs` / `*CommandActionProgressTests.cs` が残っている。
   - `PrecomputedAddressGroupCompactorTests.cs` も現行クラス名 `AddressGroupCompactorTests` とずれている。
@@ -312,6 +309,7 @@
 - `merged export の service object / service group 名復元方針` は対応しない決定済み。`Palo Alto の Service 列モデル分離` は、入力表現と解決後条件の境界整理として別に残す。
 - `AddressGroupCompactor` の group 名衝突問題は、`import 入力検証` の object / group 名衝突検出で最終的に解消できる可能性がある。ただし現行コードでは compactor 固有の誤解決として表面化するため、compaction 側の候補生成整理にも残す。
 - 外部公開境界の整理は、層依存や `GlobalUsings` の話と近いが重複ではない。前者は API surface / 互換性 / ドキュメント対象、後者は参照しやすさと namespace 可視性を扱う。
+- Domain workflow の通知 callback / event 境界整理は、logger 依存の除去に近いが重複ではない。logger 依存は層依存の排除、通知境界整理は Domain service の API surface と診断・進捗・主要出力の分類を扱う。
 - action label parsing と codec 分離は、未定義 enum 値検証とは重複しない。前者は正規化・永続化形式の責務境界、後者は値域検証を扱う。
 - `SecurityPolicyAction` の対応範囲整理と action label parsing / codec 分離は近いが、重複ではない。前者は Domain の action 語彙と実機 action の対応可否、後者は変換処理の責務境界を扱う。
 - 非 Allow の束ね単位と partition の関係整理は、`merge partition と merge eligibility signature` に近いが重複ではない。前者は出力仕様と `OriginalRuleMerger` の名前が示す範囲、後者は runner の flush 境界と各 merger の統合可否条件を扱う。
@@ -373,10 +371,11 @@
 
 - [x] [spec] 未定義サービス参照を `Kind` として通してしまう。
   - `ServiceReferenceResolver` は service object / group / 3 要素直指定として解決できなかった文字列を `ResolvedService.Kind` に載せる。
-  - `tcp hoge 80` や `ANY` のような入力ミスも atomize skip ではなく特殊サービス条件として残り、merge / export まで到達できる。
-  - address 未定義参照は後段の parse error でスキップされる一方、service 未定義参照は通るため、入力不備の検出モデルが条件軸ごとに違う。
+  - `ANY` のような入力ミスも特殊サービス条件として残り、merge / export まで到達できる。
+  - address 未定義参照は後段の parse error でエラー終了する一方、service 未定義参照は通るため、入力不備の検出モデルが条件軸ごとに違う。
   - 方針案: `application-default` など許容する Palo Alto 特殊値を明示し、未定義 service 名 / 直指定形式エラー / 既知 Kind を別結果として扱う。
   - 結論: Palo Alto に特化した対応ではなく、他製品も視野に入れた柔軟性として、現状のままとする。
+  - 補足: `tcp hoge 80` のように 3 要素に分割できても canonical direct service として妥当でない未解決 service 参照は、warning を出して Kind 指定へフォールバックする方針へ変更した。
 
 - [x] [spec] `merge` の単軸統合パスを固定点として扱うか整理する。
   - 現在は service -> source address -> destination address -> high similarity の一方向で実行し、後段で前段の統合機会が新しく生まれても戻らない。
@@ -394,12 +393,42 @@
 
 ### 高優先度だったもの
 
+- [x] [spec] CIDR 入力のホスト部を丸めるか拒否するかを明確にする。
+  - `AddressValueParser.ParseCidr` は `192.168.1.10/24` のような host bit 付き CIDR を `192.168.1.0/24` 相当へ丸める。
+  - `PaloAltoAddressDefinitionCsvReader` は CIDR 文字列を import 時に正規化しないため、実際の丸めは atomize 時に起き、入力ミスなのか意図したネットワーク表記なのか診断できない。
+  - 方針案: 製品 CSV として許容するなら仕様へ明記し、拒否するなら import validation で元値を示してエラーにする。
+  - 対応内容: Palo Alto CSV の名前付きアドレス定義は import 時にネットワーク境界へ丸める仕様とした。正規化されていない host bit 付き CIDR が Domain 値解釈へ到達した場合はエラーとして扱う。
+
+- [x] [spec] Domain canonical address の単一 IPv4 表記を明確にする。
+  - `/32` なしの `192.168.0.10` のような単一 IPv4 は一般的な入力表記として自然だが、Domain で受け入れると Infra 正規化と Domain 補正の境界が曖昧になる。
+  - 結論: Palo Alto CSV 由来の単一 IPv4 は Infra で `/32` CIDR へ正規化し、Domain canonical address 値では `/32` なし単一 IPv4 を受け付けない。
+  - 対応内容: `AddressValueParser.Parse` は `/32` なし単一 IPv4 が Domain 値解釈へ到達した場合に `FormatException` を送出するようにした。
+  - 対応内容: atomize workflow では `/32` なし単一 IPv4、host bit 付き CIDR、`CN` / `JP` などの IPv4 条件へ展開不能な address を含むポリシーを、ポリシー単位で warning 付きスキップするようにした。
+
+- [x] [ref] Palo Alto Normalizer と Domain Parser の責務を分離する。
+  - Domain で行うのは canonical 値の解釈と検証であり、補正ではない。補正は `Infra.Csv.PaloAlto` の Normalizer で完了させる。
+  - `PaloAltoAddressValueNormalizer` / `PaloAltoServiceValueNormalizer` を用意し、CSV reader 内の正規化ロジックと、現在 Domain に残っている Palo Alto 入力補正を移す。
+  - Domain 側の Parser は、必要なら `AddressValue` / `ServiceValue` への strict parse と例外スローだけを担当する。`Normalize*` 命名や alias / `any` / `255` 丸めなどの補正処理は削除する。
+  - Domain 配下の Parser が resolver / expander から不要になる場合は、値オブジェクト作成責務へ統合できるかを検討する。
+  - 対応内容: `PaloAltoAddressValueNormalizer` / `PaloAltoServiceValueNormalizer` を `Infra.Csv.PaloAlto` に追加し、Palo Alto CSV 由来のアドレス・サービス補正を reader 側へ移した。
+  - 対応内容: Domain 側の `AddressValueParser` / `ServiceValueParser` は canonical 値の strict parse と組み込み値・Kind sentinel の解釈に寄せ、`NormalizeDefinition`、host bit CIDR 丸め、protocol alias / axis `any` / protocol `255` 終端の補正を削除した。
+  - 補足: Domain 配下の Parser は、resolver / expander が `AddressValue` / `ServiceValue` を作る境界としてまだ必要なため残した。
+
+- [x] [spec] 未解決 service 参照の direct service / Kind 分類を実装に反映する。
+  - service object / service group 解決後、未解決 service 参照は canonical direct service として検証できた場合だけ direct service として扱う。
+  - canonical direct service は、protocol が `0-254`、source port / destination port が `1-65535` の数値または数値範囲、カンマ区切り複数値として妥当なものに限定する。
+  - 3 要素に分割できても canonical direct service として妥当でない場合は、直指定サービスの補正や解決エラーではなく、warning を出して Kind 指定へフォールバックする。
+  - Parser は strict に parse / throw し、warning と Kind フォールバックの判断は resolver または policy context を持つ層で行う。
+  - 対応内容: `ServiceReferenceResolver` は未解決 service 参照を canonical direct service として parse できる場合だけ direct service として扱い、3 要素でも canonical でない場合は warning を出して Kind 指定へフォールバックするようにした。
+  - 対応内容: `SecurityPolicyResolver` から policy 名と index を resolver へ渡し、warning に対象ポリシーを含められるようにした。
+
 - [x] [spec] shadow / 重複除去で、単体包含と先行ルール集合による被覆を分けて整理する。
   - `SecurityPolicyShadowAnalyzer` と `AtomicMergeCandidateDeduplicator` は、1 つの先行候補または 1 つの候補が対象を完全包含する場合だけ shadow / contained とみなす。
   - threshold により CIDR / IP range / port range が範囲のまま残る場合、複数の先行ルールを合わせると後続ルールを全域被覆しているが、単体では包含しないケースが残り得る。
   - 結論: 製品仕様上の shadow / contained は、1 件の atomic 候補による単体包含だけを対象とする。先行 atomic 候補集合による到達不能性は、現時点の shadow / 重複除去対象外とする。
   - 対応内容: `product-spec.md` と `README.md` に、単体包含と先行 atomic 候補集合による被覆の違いを明記した。
   - 対応内容: `threshold = 3` で、先行ルールの `192.168.0.1,192.168.0.2,192.168.0.3` が 3 件の atomic へ分かれ、後続ルールの `192.168.0.1-192.168.0.3` が範囲のまま残る例を追加した。
+  - 補足: 上記の例は shadowed にはならないが、Allow ルールで `Action` と `GroupId` が一致する場合は、後続の重複除去で範囲側が単一 IP 側を包含し、最終的な merged 出力では 1 件へ集約されることも明記した。
 
 - [x] [ref] `atomic_security_policies` の並び替え用 JSON 値を scalar column + index 化する。
   - `SqliteAtomicPolicyRepository.GetAllOrderedForMerge()` は `ORDER BY` で `json_extract` を多用しており、Atomic が大量になると SQLite が JSON 抽出と全件ソートに時間を使い、最初の行が返るまで進捗ログが出ない。
@@ -478,3 +507,13 @@
   - merge は application 差分をまたいで統合しないため、サービス統合後もルールが残るケースがある。
   - 対応内容: 「application は製品・環境ごとの意味を持つ条件軸として扱い、異なる application 値をまたいだ統合対象にはしない。」旨、仕様として明記した。
   - 補足: `any` が個別 application を包含する判定は shadow / containment のために使うが、merged rule の application 集合を広げる目的では使わない。
+
+### 中優先度だったもの
+
+### 低優先度だったもの
+
+- [x] [spec] サービス入力 port `0` の正規化範囲を明確にする。
+  - `PaloAltoServiceDefinitionCsvReader.NormalizePortItem` と `ServiceValueParser.NormalizePortRangeItem` は、`0` や `0-0` を `1` に丸める。
+  - 製品仕様では `0-xxxx` 範囲を `1-xxxx` へ補正すると読めるが、単独の `0` を有効値、入力ミス、または `any` 相当の別表現のどれとして扱うかは明確でない。
+  - 方針案: Palo Alto CSV 由来の補正と Domain 直指定サービスの検証を分け、単独 `0` を許容する場合もログまたは仕様で明示する。
+  - 対応内容: Palo Alto CSV の名前付きサービス定義では port `0` / `0-0` を範囲要素単位で除去し、`0-xxxx` (`xxxx >= 1`) は `1-xxxx` へ補正する仕様とした。除去によりポート軸が空になる場合は CSV 読み取りエラーとし、正規化されていない port `0` が Domain 値解釈へ到達した場合もエラーとして扱う。

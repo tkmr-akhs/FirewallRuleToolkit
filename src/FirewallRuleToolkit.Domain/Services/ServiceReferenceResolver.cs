@@ -1,7 +1,7 @@
 ﻿namespace FirewallRuleToolkit.Domain.Services;
 
 /// <summary>
-/// サービス参照名を解決し、直接指定値の解釈は <see cref="ServiceValueParser"/> に委譲します。
+/// サービス参照名を解決し、直接指定値の検証・解釈は <see cref="ServiceValueParser"/> に委譲します。
 /// </summary>
 public sealed class ServiceReferenceResolver
 {
@@ -29,6 +29,11 @@ public sealed class ServiceReferenceResolver
     }
 
     /// <summary>
+    /// 3 要素 service 参照が canonical direct service として解釈できず、Kind 指定へフォールバックしたときに発生します。
+    /// </summary>
+    public event Action<string>? KindFallbackOccurred;
+
+    /// <summary>
     /// 入力値列を解決します。
     /// </summary>
     /// <param name="values">解決対象の値列。</param>
@@ -54,9 +59,11 @@ public sealed class ServiceReferenceResolver
     /// <param name="value">解決対象のサービス参照。</param>
     /// <param name="visitedGroups">再帰検出済みのサービス グループ名。</param>
     /// <returns>解決後のサービス定義列。</returns>
-    private IEnumerable<ResolvedService> ResolveValue(string value, HashSet<string> visitedGroups)
+    private IEnumerable<ResolvedService> ResolveValue(
+        string value,
+        HashSet<string> visitedGroups)
     {
-        if (ServiceValueParser.TryNormalizeBuiltInValue(value, out var builtInValue))
+        if (ServiceValueParser.TryCreateBuiltInValue(value, out var builtInValue))
         {
             yield return builtInValue;
             yield break;
@@ -64,7 +71,7 @@ public sealed class ServiceReferenceResolver
 
         if (serviceDefinitionLookup.TryGetByName(value, out var serviceDefinition))
         {
-            yield return ServiceValueParser.NormalizeDefinition(serviceDefinition);
+            yield return ServiceValueParser.ParseDefinition(serviceDefinition);
             yield break;
         }
 
@@ -93,6 +100,17 @@ public sealed class ServiceReferenceResolver
             yield break;
         }
 
-        yield return ServiceValueParser.ParseReference(value);
+        if (ServiceValueParser.TryParseCanonicalDirectReference(value, out var directService))
+        {
+            yield return directService;
+            yield break;
+        }
+
+        if (ServiceValueParser.SplitServiceReferenceParts(value).Length == 3)
+        {
+            KindFallbackOccurred?.Invoke(value);
+        }
+
+        yield return ServiceValueParser.CreateKindResolvedService(value);
     }
 }

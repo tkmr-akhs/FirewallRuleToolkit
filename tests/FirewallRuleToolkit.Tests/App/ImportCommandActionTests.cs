@@ -40,7 +40,7 @@ public sealed class ImportUseCaseTests
                 Index = 1,
                 Name = "allow-web",
                 FromZones = ["trust"],
-                SourceAddressReferences = ["src-group", "192.168.1.1"],
+                SourceAddressReferences = ["src-group", "192.168.1.1/32"],
                 ToZones = ["untrust"],
                 DestinationAddressReferences = ["dst-host"],
                 Applications = ["web-browsing"],
@@ -75,7 +75,7 @@ public sealed class ImportUseCaseTests
         Assert.Equal(1, writeSession.CommitCount);
 
         var importedPolicy = Assert.Single(writeSession.ImportedSecurityPoliciesRepository.Items);
-        Assert.Equal(["src-group", "192.168.1.1"], importedPolicy.SourceAddressReferences);
+        Assert.Equal(["src-group", "192.168.1.1/32"], importedPolicy.SourceAddressReferences);
         Assert.Equal(["dst-host"], importedPolicy.DestinationAddressReferences);
         Assert.Equal(["svc-group"], importedPolicy.ServiceReferences);
     }

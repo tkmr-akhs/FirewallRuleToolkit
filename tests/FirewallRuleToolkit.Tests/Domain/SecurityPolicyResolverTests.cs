@@ -44,7 +44,7 @@ public sealed class SecurityPolicyResolverTests
                 Index = 1,
                 Name = "allow-web",
                 FromZones = ["trust"],
-                SourceAddressReferences = ["src-group", "192.168.1.1"],
+                SourceAddressReferences = ["src-group", "192.168.1.1/32"],
                 ToZones = ["untrust"],
                 DestinationAddressReferences = ["dst-host"],
                 Applications = ["web-browsing"],
@@ -72,6 +72,43 @@ public sealed class SecurityPolicyResolverTests
                 Assert.Equal("0", service.DestinationPort);
                 Assert.Equal("application-default", service.Kind);
             });
+    }
+
+    [Fact]
+    public void Resolve_WhenServiceReferenceFallsBackToKind_ReportsPolicyContext()
+    {
+        var resolver = new SecurityPolicyResolver(
+            new AddressReferenceResolver(
+                new StubAddressDefinitionLookup(new Dictionary<string, string>(StringComparer.Ordinal)),
+                new StubAddressGroupLookup(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal))),
+            new ServiceReferenceResolver(
+                new StubServiceDefinitionLookup(new Dictionary<string, ServiceDefinition>(StringComparer.Ordinal)),
+                new StubServiceGroupLookup(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal))));
+        var fallbacks = new List<(string? PolicyName, uint? PolicyIndex, string ServiceReference)>();
+        resolver.ServiceReferenceKindFallbackOccurred += (policyName, policyIndex, serviceReference) =>
+            fallbacks.Add((policyName, policyIndex, serviceReference));
+
+        var resolved = resolver.Resolve(
+            new ImportedSecurityPolicy
+            {
+                Index = 10,
+                Name = "rule-10",
+                FromZones = ["trust"],
+                SourceAddressReferences = ["192.168.0.10/32"],
+                ToZones = ["untrust"],
+                DestinationAddressReferences = ["10.0.0.10/32"],
+                Applications = ["web-browsing"],
+                ServiceReferences = ["tcp ANY 80"],
+                Action = SecurityPolicyAction.Allow,
+                GroupId = "group-a"
+            });
+
+        var service = Assert.Single(resolved.Services);
+        Assert.Equal("tcp ANY 80", service.Kind);
+        var fallback = Assert.Single(fallbacks);
+        Assert.Equal("rule-10", fallback.PolicyName);
+        Assert.Equal(10u, fallback.PolicyIndex);
+        Assert.Equal("tcp ANY 80", fallback.ServiceReference);
     }
 
     private sealed class StubAddressDefinitionLookup : ILookupRepository<string>

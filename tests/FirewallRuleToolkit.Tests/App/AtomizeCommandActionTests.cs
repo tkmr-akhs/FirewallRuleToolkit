@@ -31,13 +31,13 @@ public sealed class AtomizeUseCaseTests
     }
 
     [Fact]
-    public void Execute_WhenSkippedPolicyOccurs_StillReportsBasedOnSourcePolicyCount()
+    public void Execute_WhenAddressCannotBeExpanded_SkipsPolicyAndCommits()
     {
         var reportedCounts = new List<int>();
         var source = new TestReadRepository<ImportedSecurityPolicy>(
             Enumerable.Range(1, 200).Select(static index =>
                 index == 200
-                    ? CreatePolicy(index, sourceAddressValue: "invalid")
+                    ? CreatePolicy(index, sourceAddressValue: "CN")
                     : CreatePolicy(index)));
         var writeSession = new TestWriteRepositorySession();
 
@@ -50,11 +50,14 @@ public sealed class AtomizeUseCaseTests
 
         Assert.Equal(0, exitCode);
         Assert.Equal([200], reportedCounts);
+        Assert.Equal(199, writeSession.AtomicPoliciesRepository.Items.Count);
         Assert.Equal(10, writeSession.ToolMetadataRepository.AtomizeThreshold);
+        Assert.Equal(1, writeSession.ToolMetadataRepository.SetAtomizeThresholdCount);
+        Assert.Equal(1, writeSession.CommitCount);
     }
 
     [Fact]
-    public void Execute_WhenAppendFails_ThrowsAndDoesNotTreatItAsSkippedPolicy()
+    public void Execute_WhenAppendFails_ThrowsFormatException()
     {
         var source = new TestReadRepository<ImportedSecurityPolicy>([CreatePolicy(1)]);
         var writeSession = new TestWriteRepositorySession();
@@ -95,7 +98,7 @@ public sealed class AtomizeUseCaseTests
     private static ImportedSecurityPolicy CreatePolicy(
         int index,
         SecurityPolicyAction action = SecurityPolicyAction.Allow,
-        string sourceAddressValue = "10.0.0.1")
+        string sourceAddressValue = "10.0.0.1/32")
     {
         return new ImportedSecurityPolicy
         {
@@ -104,7 +107,7 @@ public sealed class AtomizeUseCaseTests
             FromZones = ["trust"],
             SourceAddressReferences = [sourceAddressValue],
             ToZones = ["untrust"],
-            DestinationAddressReferences = ["10.0.0.2"],
+            DestinationAddressReferences = ["10.0.0.2/32"],
             Applications = ["any"],
             ServiceReferences = ["service-http"],
             Action = action,
@@ -159,9 +162,9 @@ public sealed class AtomizeUseCaseTests
                 {
                     Name = "service-http",
                     Protocol = "6",
-                    SourcePort = "0-65535",
+                    SourcePort = "1-65535",
                     DestinationPort = "80",
-                    Kind = "service"
+                    Kind = null
                 };
                 return true;
             }

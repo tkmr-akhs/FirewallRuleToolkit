@@ -41,14 +41,10 @@ internal sealed class SecurityPolicyAtomizer
         ArgumentNullException.ThrowIfNull(policy);
 
         // 送信元アドレス範囲の配列
-        var sourceAddressRanges = ResolvedAddressExpander
-            .Expand(policy.SourceAddresses, threshold)
-            .ToArray();
+        var sourceAddressRanges = ExpandAddresses(policy.SourceAddresses, "source");
 
         // 宛先アドレスの配列
-        var destinationAddressRanges = ResolvedAddressExpander
-            .Expand(policy.DestinationAddresses, threshold)
-            .ToArray();
+        var destinationAddressRanges = ExpandAddresses(policy.DestinationAddresses, "destination");
 
         // サービスの配列
         var serviceRanges = ResolvedServiceExpander
@@ -93,4 +89,46 @@ internal sealed class SecurityPolicyAtomizer
             }
         }
     }
+
+    /// <summary>
+    /// 解決済みアドレス列を atomize 用のアドレス範囲配列へ変換します。
+    /// </summary>
+    /// <param name="addresses">変換対象の解決済みアドレス列。</param>
+    /// <param name="addressKind">送信元または宛先を表す名前。</param>
+    /// <returns>変換したアドレス範囲配列。</returns>
+    private AddressValue[] ExpandAddresses(IEnumerable<ResolvedAddress> addresses, string addressKind)
+    {
+        try
+        {
+            return ResolvedAddressExpander
+                .Expand(addresses, threshold)
+                .ToArray();
+        }
+        catch (FormatException exception)
+        {
+            throw new UnsupportedAddressPolicyException(addressKind, exception);
+        }
+    }
+}
+
+/// <summary>
+/// アドレス条件を atomic 化可能な IPv4 範囲として解釈できなかったことを表します。
+/// </summary>
+internal sealed class UnsupportedAddressPolicyException : Exception
+{
+    /// <summary>
+    /// アドレス条件を atomic 化可能な IPv4 範囲として解釈できなかったことを表す例外を初期化します。
+    /// </summary>
+    /// <param name="addressKind">送信元または宛先を表す名前。</param>
+    /// <param name="innerException">実際のアドレス解釈エラー。</param>
+    public UnsupportedAddressPolicyException(string addressKind, Exception innerException)
+        : base($"Unsupported {addressKind} address value.", innerException)
+    {
+        AddressKind = addressKind;
+    }
+
+    /// <summary>
+    /// 送信元または宛先を表す名前を取得します。
+    /// </summary>
+    public string AddressKind { get; }
 }

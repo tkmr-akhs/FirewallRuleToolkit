@@ -15,8 +15,8 @@ public sealed class SecurityPolicyAtomizeRunnerTests
 
         var result = runner.Run(
             [
-                CreatePolicy(1, sourceAddressValues: ["10.0.0.1", "10.0.0.2"]),
-                CreatePolicy(2, sourceAddressValue: "10.0.0.3")
+                CreatePolicy(1, sourceAddressValues: ["10.0.0.1/32", "10.0.0.2/32"]),
+                CreatePolicy(2, sourceAddressValue: "10.0.0.3/32")
             ],
             policies => appendedBatches.Add(policies.ToArray()));
 
@@ -36,27 +36,85 @@ public sealed class SecurityPolicyAtomizeRunnerTests
             });
     }
 
-    [Fact]
-    public void Run_WhenSkippedPolicyOccurs_ReturnsProcessedAndSkippedCounts()
+    [Theory]
+    [InlineData("CN", "CN")]
+    [InlineData("192.168.1.10/24", "network address")]
+    [InlineData("192.168.1.10", "/32")]
+    public void Run_WhenAddressCannotBeExpanded_SkipsPolicyAndReportsSkippedPolicy(
+        string sourceAddressValue,
+        string expectedReason)
     {
         var runner = new SecurityPolicyAtomizeRunner(CreateResolver(), threshold: 10);
+        var appendedBatches = new List<AtomicSecurityPolicy[]>();
         var skippedPolicies = new List<SecurityPolicyAtomizeRunner.SkippedPolicy>();
 
         var result = runner.Run(
             [
                 CreatePolicy(1),
-                CreatePolicy(2, sourceAddressValue: "invalid")
+                CreatePolicy(2, sourceAddressValue: sourceAddressValue)
             ],
-            static _ => { },
+            policies => appendedBatches.Add(policies.ToArray()),
             reportSkippedPolicy: skippedPolicies.Add);
 
         Assert.Equal(2, result.ProcessedSourcePolicyCount);
         Assert.Equal(1, result.SkippedSourcePolicyCount);
 
-        var skipped = Assert.Single(skippedPolicies);
-        Assert.Equal("policy-2", skipped.PolicyName);
-        Assert.Equal((uint)2, skipped.PolicyIndex);
-        Assert.Equal("Unsupported IPv4 address: invalid", skipped.Reason);
+        var batch = Assert.Single(appendedBatches);
+        var atomicPolicy = Assert.Single(batch);
+        Assert.Equal("policy-1", atomicPolicy.OriginalPolicyName);
+
+        var skippedPolicy = Assert.Single(skippedPolicies);
+        Assert.Equal("policy-2", skippedPolicy.PolicyName);
+        Assert.Equal(2u, skippedPolicy.PolicyIndex);
+        Assert.Contains(expectedReason, skippedPolicy.Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Run_WhenAddressGroupResolvesToNonIpv4Token_SkipsPolicy()
+    {
+        var runner = new SecurityPolicyAtomizeRunner(
+            CreateResolver(
+                new FixedAddressDefinitionLookup(new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["country-cn"] = "CN"
+                }),
+                new FixedAddressGroupLookup(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+                {
+                    ["geo-cn"] = ["country-cn"]
+                })),
+            threshold: 10);
+        var appendedBatches = new List<AtomicSecurityPolicy[]>();
+        var skippedPolicies = new List<SecurityPolicyAtomizeRunner.SkippedPolicy>();
+
+        var result = runner.Run(
+            [CreatePolicy(1, sourceAddressValue: "geo-cn")],
+            policies => appendedBatches.Add(policies.ToArray()),
+            reportSkippedPolicy: skippedPolicies.Add);
+
+        Assert.Equal(1, result.ProcessedSourcePolicyCount);
+        Assert.Equal(1, result.SkippedSourcePolicyCount);
+        Assert.Empty(appendedBatches);
+
+        var skippedPolicy = Assert.Single(skippedPolicies);
+        Assert.Equal("policy-1", skippedPolicy.PolicyName);
+        Assert.Contains("CN", skippedPolicy.Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Run_WhenAddressGroupRecursionOccurs_ThrowsInvalidOperationException()
+    {
+        var runner = new SecurityPolicyAtomizeRunner(
+            CreateResolver(
+                new EmptyAddressDefinitionLookup(),
+                new FixedAddressGroupLookup(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+                {
+                    ["loop"] = ["loop"]
+                })),
+            threshold: 10);
+
+        Assert.Throws<InvalidOperationException>(() => runner.Run(
+            [CreatePolicy(1, sourceAddressValue: "loop")],
+            static _ => { }));
     }
 
     [Fact]
@@ -75,14 +133,46 @@ public sealed class SecurityPolicyAtomizeRunnerTests
             onSourcePolicyProcessed: reportedCounts.Add);
 
         Assert.Equal(3, result.ProcessedSourcePolicyCount);
+        Assert.Equal(0, result.SkippedSourcePolicyCount);
         Assert.Equal([1, 2, 3], reportedCounts);
+    }
+
+    [Fact]
+    public void Run_WhenInvalidThreePartServiceReferenceReachesDomain_FallsBackToKind()
+    {
+        var serviceFallbacks = new List<SecurityPolicyAtomizeRunner.ServiceReferenceKindFallback>();
+        var serviceResolver = new ServiceReferenceResolver(
+            new FixedServiceDefinitionLookup(),
+            new EmptyServiceGroupLookup());
+        var policyResolver = CreateResolver(serviceResolver: serviceResolver);
+        var runner = new SecurityPolicyAtomizeRunner(
+            policyResolver,
+            threshold: 10);
+        var appendedBatches = new List<AtomicSecurityPolicy[]>();
+
+        runner.Run(
+            [CreatePolicy(1, serviceReferences: ["tcp 0-0 80"])],
+            policies => appendedBatches.Add(policies.ToArray()),
+            reportServiceReferenceKindFallback: serviceFallbacks.Add);
+
+        var atomicPolicy = Assert.Single(Assert.Single(appendedBatches));
+        Assert.Equal("tcp 0-0 80", atomicPolicy.Service.Kind);
+        Assert.Equal(255U, atomicPolicy.Service.ProtocolStart);
+        Assert.Equal(0U, atomicPolicy.Service.SourcePortStart);
+        Assert.Equal(0U, atomicPolicy.Service.DestinationPortStart);
+
+        var serviceFallback = Assert.Single(serviceFallbacks);
+        Assert.Equal("policy-1", serviceFallback.PolicyName);
+        Assert.Equal(1u, serviceFallback.PolicyIndex);
+        Assert.Equal("tcp 0-0 80", serviceFallback.ServiceReference);
     }
 
     private static ImportedSecurityPolicy CreatePolicy(
         int index,
         SecurityPolicyAction action = SecurityPolicyAction.Allow,
-        string sourceAddressValue = "10.0.0.1",
-        IReadOnlyList<string>? sourceAddressValues = null)
+        string sourceAddressValue = "10.0.0.1/32",
+        IReadOnlyList<string>? sourceAddressValues = null,
+        IReadOnlyList<string>? serviceReferences = null)
     {
         return new ImportedSecurityPolicy
         {
@@ -91,21 +181,24 @@ public sealed class SecurityPolicyAtomizeRunnerTests
             FromZones = ["trust"],
             SourceAddressReferences = (sourceAddressValues ?? [sourceAddressValue]).ToArray(),
             ToZones = ["untrust"],
-            DestinationAddressReferences = ["10.0.0.2"],
+            DestinationAddressReferences = ["10.0.0.2/32"],
             Applications = ["any"],
-            ServiceReferences = ["service-http"],
+            ServiceReferences = serviceReferences?.ToArray() ?? ["service-http"],
             Action = action,
             GroupId = $"group-{index}"
         };
     }
 
-    private static SecurityPolicyResolver CreateResolver()
+    private static SecurityPolicyResolver CreateResolver(
+        ILookupRepository<string>? addressDefinitionLookup = null,
+        ILookupRepository<IReadOnlyList<string>>? addressGroupLookup = null,
+        ServiceReferenceResolver? serviceResolver = null)
     {
         return new SecurityPolicyResolver(
             new AddressReferenceResolver(
-                new EmptyAddressDefinitionLookup(),
-                new EmptyAddressGroupLookup()),
-            new ServiceReferenceResolver(
+                addressDefinitionLookup ?? new EmptyAddressDefinitionLookup(),
+                addressGroupLookup ?? new EmptyAddressGroupLookup()),
+            serviceResolver ?? new ServiceReferenceResolver(
                 new FixedServiceDefinitionLookup(),
                 new EmptyServiceGroupLookup()));
     }
@@ -136,6 +229,44 @@ public sealed class SecurityPolicyAtomizeRunnerTests
         }
     }
 
+    private sealed class FixedAddressDefinitionLookup : ILookupRepository<string>
+    {
+        private readonly IReadOnlyDictionary<string, string> values;
+
+        public FixedAddressDefinitionLookup(IReadOnlyDictionary<string, string> values)
+        {
+            this.values = values;
+        }
+
+        public bool TryGetByName(string name, out string value)
+        {
+            return values.TryGetValue(name, out value!);
+        }
+
+        public void EnsureAvailable()
+        {
+        }
+    }
+
+    private sealed class FixedAddressGroupLookup : ILookupRepository<IReadOnlyList<string>>
+    {
+        private readonly IReadOnlyDictionary<string, IReadOnlyList<string>> values;
+
+        public FixedAddressGroupLookup(IReadOnlyDictionary<string, IReadOnlyList<string>> values)
+        {
+            this.values = values;
+        }
+
+        public bool TryGetByName(string name, out IReadOnlyList<string> value)
+        {
+            return values.TryGetValue(name, out value!);
+        }
+
+        public void EnsureAvailable()
+        {
+        }
+    }
+
     private sealed class FixedServiceDefinitionLookup : ILookupRepository<ServiceDefinition>
     {
         public bool TryGetByName(string name, out ServiceDefinition serviceDefinition)
@@ -146,9 +277,9 @@ public sealed class SecurityPolicyAtomizeRunnerTests
                 {
                     Name = "service-http",
                     Protocol = "6",
-                    SourcePort = "0-65535",
+                    SourcePort = "1-65535",
                     DestinationPort = "80",
-                    Kind = "service"
+                    Kind = null
                 };
                 return true;
             }
@@ -174,4 +305,5 @@ public sealed class SecurityPolicyAtomizeRunnerTests
         {
         }
     }
+
 }

@@ -16,6 +16,28 @@ public sealed class SecurityPolicyAtomizeRunner
     private readonly ILogger logger;
 
     /// <summary>
+    /// atomic 化できずにスキップした入力ポリシーの情報です。
+    /// </summary>
+    /// <param name="PolicyName">スキップした入力ポリシー名。</param>
+    /// <param name="PolicyIndex">スキップした入力ポリシーの元インデックス。</param>
+    /// <param name="Reason">スキップ理由。</param>
+    public readonly record struct SkippedPolicy(
+        string PolicyName,
+        uint PolicyIndex,
+        string Reason);
+
+    /// <summary>
+    /// サービス参照が Kind 指定へフォールバックした情報です。
+    /// </summary>
+    /// <param name="PolicyName">フォールバックが発生した入力ポリシー名。</param>
+    /// <param name="PolicyIndex">フォールバックが発生した入力ポリシーの元インデックス。</param>
+    /// <param name="ServiceReference">Kind 指定へフォールバックしたサービス参照。</param>
+    public readonly record struct ServiceReferenceKindFallback(
+        string? PolicyName,
+        uint? PolicyIndex,
+        string ServiceReference);
+
+    /// <summary>
     /// セキュリティ ポリシー群から atomic 出力を構築するバッチ実行を提供するクラスのコンストラクターです。
     /// </summary>
     /// <param name="securityPolicyResolver">未解決ポリシーの解決処理。</param>
@@ -52,12 +74,14 @@ public sealed class SecurityPolicyAtomizeRunner
     /// <param name="emitAtomicPolicies">生成した atomic ポリシー batch の通知先。</param>
     /// <param name="onSourcePolicyProcessed">入力ポリシー 1 件の処理完了通知先。</param>
     /// <param name="reportSkippedPolicy">スキップした入力ポリシーの通知先。</param>
+    /// <param name="reportServiceReferenceKindFallback">サービス参照が Kind 指定へフォールバックしたことの通知先。</param>
     /// <returns>実行結果の要約。</returns>
     public SecurityPolicyAtomizeRunResult Run(
         IEnumerable<ImportedSecurityPolicy> importedSecurityPolicies,
         PolicyBatchEmitter<AtomicSecurityPolicy> emitAtomicPolicies,
         Action<int>? onSourcePolicyProcessed = null,
-        Action<SkippedPolicy>? reportSkippedPolicy = null)
+        Action<SkippedPolicy>? reportSkippedPolicy = null,
+        Action<ServiceReferenceKindFallback>? reportServiceReferenceKindFallback = null)
     {
         ArgumentNullException.ThrowIfNull(importedSecurityPolicies);
         ArgumentNullException.ThrowIfNull(emitAtomicPolicies);
@@ -65,38 +89,46 @@ public sealed class SecurityPolicyAtomizeRunner
         var processedSourcePolicyCount = 0;
         var skippedSourcePolicyCount = 0;
 
-        foreach (var importedPolicy in importedSecurityPolicies)
+        void ReportServiceReferenceKindFallback(
+            string? policyName,
+            uint? policyIndex,
+            string serviceReference)
         {
-            processedSourcePolicyCount++;
+            reportServiceReferenceKindFallback?.Invoke(new ServiceReferenceKindFallback(
+                policyName,
+                policyIndex,
+                serviceReference));
+        }
 
-            AtomicSecurityPolicy[] atomizedPolicies;
-            var shouldAppend = true;
-            try
+        securityPolicyResolver.ServiceReferenceKindFallbackOccurred += ReportServiceReferenceKindFallback;
+        try
+        {
+            foreach (var importedPolicy in importedSecurityPolicies)
             {
-                var resolvedPolicy = securityPolicyResolver.Resolve(importedPolicy);
-                atomizedPolicies = atomizer.Atomize(resolvedPolicy).ToArray();
-            }
-            catch (FormatException ex)
-            {
-                skippedSourcePolicyCount++;
-                reportSkippedPolicy?.Invoke(new SkippedPolicy(importedPolicy.Name, importedPolicy.Index, ex.Message));
-                atomizedPolicies = [];
-                shouldAppend = false;
-            }
-            catch (InvalidOperationException ex)
-            {
-                skippedSourcePolicyCount++;
-                reportSkippedPolicy?.Invoke(new SkippedPolicy(importedPolicy.Name, importedPolicy.Index, ex.Message));
-                atomizedPolicies = [];
-                shouldAppend = false;
-            }
+                processedSourcePolicyCount++;
 
-            if (shouldAppend)
-            {
-                emitAtomicPolicies(atomizedPolicies);
-            }
+                try
+                {
+                    var resolvedPolicy = securityPolicyResolver.Resolve(importedPolicy);
+                    var atomizedPolicies = atomizer.Atomize(resolvedPolicy).ToArray();
+                    emitAtomicPolicies(atomizedPolicies);
+                }
+                catch (UnsupportedAddressPolicyException exception)
+                {
+                    skippedSourcePolicyCount++;
+                    var reason = exception.InnerException?.Message ?? exception.Message;
+                    reportSkippedPolicy?.Invoke(new SkippedPolicy(
+                        importedPolicy.Name,
+                        importedPolicy.Index,
+                        reason));
+                }
 
-            onSourcePolicyProcessed?.Invoke(processedSourcePolicyCount);
+                onSourcePolicyProcessed?.Invoke(processedSourcePolicyCount);
+            }
+        }
+        finally
+        {
+            securityPolicyResolver.ServiceReferenceKindFallbackOccurred -= ReportServiceReferenceKindFallback;
         }
 
         return new SecurityPolicyAtomizeRunResult
@@ -106,14 +138,4 @@ public sealed class SecurityPolicyAtomizeRunner
         };
     }
 
-    /// <summary>
-    /// スキップした入力ポリシーの情報です。
-    /// </summary>
-    /// <param name="PolicyName">ポリシー名。</param>
-    /// <param name="PolicyIndex">元ポリシー インデックス。</param>
-    /// <param name="Reason">スキップ理由。</param>
-    public readonly record struct SkippedPolicy(
-        string PolicyName,
-        uint PolicyIndex,
-        string Reason);
 }

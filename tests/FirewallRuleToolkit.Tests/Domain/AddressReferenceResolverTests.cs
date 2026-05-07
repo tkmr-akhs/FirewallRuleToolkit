@@ -25,15 +25,15 @@ public sealed class AddressReferenceResolverTests
     }
 
     [Fact]
-    public void Resolve_InlineHostAddress_NormalizesToSlash32()
+    public void Resolve_UnresolvedReference_PreservesReferenceText()
     {
         var resolver = new AddressReferenceResolver(
             new StubAddressDefinitionStore(new Dictionary<string, string>(StringComparer.Ordinal)),
             new StubAddressGroupStore(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
 
-        var resolved = resolver.Resolve(["192.168.0.10"]).Single();
+        var resolved = resolver.Resolve(["missing-object"]).Single();
 
-        Assert.Equal("192.168.0.10/32", resolved.Value);
+        Assert.Equal("missing-object", resolved.Value);
     }
 
     [Fact]

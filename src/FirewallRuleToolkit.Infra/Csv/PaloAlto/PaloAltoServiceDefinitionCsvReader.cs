@@ -59,9 +59,9 @@ public sealed class PaloAltoServiceDefinitionCsvReader : IReadRepository<Service
         return new ServiceDefinition
         {
             Name = CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoServiceDefinitions.NameHeader),
-            Protocol = NormalizeProtocol(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoServiceDefinitions.ProtocolHeader)),
-            SourcePort = NormalizePortValue(GetRequiredOrDefault(row, CsvDatabaseLayout.PaloAltoServiceDefinitions.SourcePortHeader, "any")),
-            DestinationPort = NormalizePortValue(GetRequiredOrDefault(row, CsvDatabaseLayout.PaloAltoServiceDefinitions.DestinationPortHeader, "any")),
+            Protocol = PaloAltoServiceValueNormalizer.NormalizeDefinitionProtocol(CsvRepositoryHelper.GetRequiredValue(row, CsvDatabaseLayout.PaloAltoServiceDefinitions.ProtocolHeader)),
+            SourcePort = PaloAltoServiceValueNormalizer.NormalizeDefinitionPortValue(GetRequiredOrDefault(row, CsvDatabaseLayout.PaloAltoServiceDefinitions.SourcePortHeader, "any")),
+            DestinationPort = PaloAltoServiceValueNormalizer.NormalizeDefinitionPortValue(GetRequiredOrDefault(row, CsvDatabaseLayout.PaloAltoServiceDefinitions.DestinationPortHeader, "any")),
             Kind = null
         };
     }
@@ -71,56 +71,5 @@ public sealed class PaloAltoServiceDefinitionCsvReader : IReadRepository<Service
         return row.TryGetValue(headerName, out var value) && !string.IsNullOrWhiteSpace(value)
             ? value
             : defaultValue;
-    }
-
-    private static string NormalizeProtocol(string protocol)
-    {
-        return protocol.Trim().ToUpperInvariant() switch
-        {
-            "TCP" => "6",
-            "UDP" => "17",
-            "ICMP" => "1",
-            "SCTP" => "132",
-            _ => protocol.Trim()
-        };
-    }
-
-    private static string NormalizePortValue(string port)
-    {
-        var trimmed = port.Trim();
-        var items = trimmed
-            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-            .Select(NormalizePortItem)
-            .ToArray();
-
-        if (items.Length == 0)
-        {
-            throw new FormatException("Port value is required.");
-        }
-
-        return string.Join(",", items);
-    }
-
-    private static string NormalizePortItem(string port)
-    {
-        if (port.Equals("any", StringComparison.OrdinalIgnoreCase))
-        {
-            return "1-65535";
-        }
-
-        if (port.Equals("0", StringComparison.Ordinal))
-        {
-            return "1";
-        }
-
-        if (!port.StartsWith("0-", StringComparison.Ordinal))
-        {
-            return port;
-        }
-
-        var finish = port[2..];
-        return finish.Equals("0", StringComparison.Ordinal)
-            ? "1"
-            : $"1-{finish}";
     }
 }

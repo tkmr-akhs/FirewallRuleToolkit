@@ -15,7 +15,7 @@ public sealed class ResolvedServiceExpanderTests
                     Protocol = "6-7",
                     SourcePort = "1000-1001",
                     DestinationPort = "80",
-                    Kind = "service"
+                    Kind = null
                 }
             ],
             threshold: 3).ToArray();
@@ -28,7 +28,7 @@ public sealed class ResolvedServiceExpanderTests
             && value.SourcePortFinish == 1000
             && value.DestinationPortStart == 80
             && value.DestinationPortFinish == 80
-            && value.Kind == "service");
+            && value.Kind is null);
         Assert.Contains(expanded, static value =>
             value.ProtocolStart == 7
             && value.ProtocolFinish == 7
@@ -36,6 +36,6 @@ public sealed class ResolvedServiceExpanderTests
             && value.SourcePortFinish == 1001
             && value.DestinationPortStart == 80
             && value.DestinationPortFinish == 80
-            && value.Kind == "service");
+            && value.Kind is null);
     }
 }
