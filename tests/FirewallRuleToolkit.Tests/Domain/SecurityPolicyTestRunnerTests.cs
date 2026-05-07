@@ -3,6 +3,7 @@ using FirewallRuleToolkit.Domain.Services.Results;
 using FirewallRuleToolkit.Domain.Entities;
 using FirewallRuleToolkit.Domain.Enums;
 using FirewallRuleToolkit.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
 
 namespace FirewallRuleToolkit.Tests.Domain;
 
@@ -264,6 +265,43 @@ public sealed class SecurityPolicyTestRunnerTests
         Assert.Equal([1L, 2L, 3L], reportedCounts);
     }
 
+    [Fact]
+    public void Run_WhenDebugLoggerProvided_WritesInitialProcessingDebugLog()
+    {
+        var logger = new CapturingLogger(LogLevel.Debug);
+        var runner = new SecurityPolicyTestRunner(logger);
+
+        var result = runner.Run(
+        [
+            CreateAtomicPolicy(originalIndex: 10, originalPolicyName: "allow-web"),
+            CreateAtomicPolicy(
+                originalIndex: 20,
+                originalPolicyName: "allow-admin",
+                fromZone: "dmz",
+                toZone: "trust")
+        ],
+        [
+            CreateMergedPolicy(minimumIndex: 10, maximumIndex: 10),
+            CreateMergedPolicy(
+                minimumIndex: 20,
+                maximumIndex: 20,
+                fromZone: "dmz",
+                toZone: "trust")
+        ]);
+
+        Assert.Equal(2, result.ProcessedAtomicCount);
+
+        Assert.Equal(
+        [
+            "test merged policy load started.",
+            "test merged policy load completed. mergedPolicies: 2",
+            "test atomic policy enumeration started.",
+            "test first atomic policy read.",
+            "test atomic policy enumeration completed."
+        ],
+        logger.Messages);
+    }
+
     private static AtomicSecurityPolicy CreateAtomicPolicy(
         uint originalIndex,
         string originalPolicyName,
@@ -344,5 +382,37 @@ public sealed class SecurityPolicyTestRunnerTests
             MaximumIndex = maximumIndex,
             OriginalPolicyNames = new HashSet<string>(StringComparer.Ordinal) { $"merged-{minimumIndex}" }
         };
+    }
+
+    private sealed class CapturingLogger(LogLevel minimumLevel) : ILogger
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+        {
+            return null;
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return logLevel != LogLevel.None && logLevel >= minimumLevel;
+        }
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            ArgumentNullException.ThrowIfNull(formatter);
+
+            if (!IsEnabled(logLevel))
+            {
+                return;
+            }
+
+            Messages.Add(formatter(state, exception));
+        }
     }
 }

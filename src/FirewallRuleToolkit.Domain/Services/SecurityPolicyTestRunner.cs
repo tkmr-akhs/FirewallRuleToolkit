@@ -11,7 +11,7 @@ public sealed class SecurityPolicyTestRunner
     private readonly SecurityPolicyTester tester;
 
     /// <summary>
-    /// デバッグ ログ出力先です。(現状では使用しませんが、将来的にテストの過程でログを出力する可能性があります)
+    /// デバッグ ログ出力先です。
     /// </summary>
     private readonly ILogger logger;
 
@@ -105,7 +105,11 @@ public sealed class SecurityPolicyTestRunner
 
         reportFinding ??= static _ => { };
 
+        logger.LogDebug("test merged policy load started.");
         var mergedPoliciesOrdered = mergedPolicies.ToArray();
+        logger.LogDebug(
+            "test merged policy load completed. mergedPolicies: {MergedPolicyCount}",
+            mergedPoliciesOrdered.Length);
 
         long processedAtomicCount = 0;
         long nonShadowedAtomicCount = 0;
@@ -113,7 +117,8 @@ public sealed class SecurityPolicyTestRunner
         long warningDiagnosticCount = 0;
         long informationalDiagnosticCount = 0;
 
-        foreach (var classification in ClassifyAtomicPolicies(atomicPoliciesOrderedForMerge))
+        logger.LogDebug("test atomic policy enumeration started.");
+        foreach (var classification in ClassifyAtomicPolicies(atomicPoliciesOrderedForMerge, logger))
         {
             processedAtomicCount++;
             onAtomicPolicyProcessed?.Invoke(processedAtomicCount);
@@ -168,13 +173,19 @@ public sealed class SecurityPolicyTestRunner
     /// Atomic 列を shadowed / 非 shadowed に分類します。
     /// </summary>
     /// <param name="atomicPoliciesOrderedForMerge">merge 用順序で並び、同じ merge パーティションが連続するよう整列された Atomic ポリシー列。</param>
+    /// <param name="logger">デバッグ ログ出力先。</param>
     /// <returns>分類結果。</returns>
     private static IEnumerable<AtomicPolicyClassification> ClassifyAtomicPolicies(
-        IEnumerable<AtomicSecurityPolicy> atomicPoliciesOrderedForMerge)
+        IEnumerable<AtomicSecurityPolicy> atomicPoliciesOrderedForMerge,
+        ILogger logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
+
         var partitionAtomicPolicies = new List<AtomicSecurityPolicy>();
         var partitionCandidates = new List<AtomicMergeCandidate>();
         MergePartitionKey? currentPartition = null;
+
+        logger.LogDebug("test first atomic policy read.");
 
         foreach (var atomicPolicy in atomicPoliciesOrderedForMerge)
         {
@@ -200,6 +211,8 @@ public sealed class SecurityPolicyTestRunner
             partitionAtomicPolicies.Add(atomicPolicy);
             partitionCandidates.Add(AtomicMergeCandidateFactory.CreateFromAtomic(atomicPolicy));
         }
+
+        logger.LogDebug("test atomic policy enumeration completed.");
 
         foreach (var classification in ClassifyPartition(
             partitionAtomicPolicies,
