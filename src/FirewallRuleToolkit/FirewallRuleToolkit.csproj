@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>fwrule-tool</AssemblyName>
     <RootNamespace>FirewallRuleToolkit</RootNamespace>
-    <Version>1.0.1</Version>
+    <Version>1.1.0</Version>
     <DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
